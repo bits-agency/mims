@@ -22,7 +22,8 @@ import {
   Users,
   Menu,
   X,
-  GraduationCap
+  GraduationCap,
+  Building2
 } from 'lucide-react';
 
 const heroSlides = [
@@ -173,44 +174,97 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 4. Stat Counter Bar */}
-      <section className="bg-slate-950 py-8 sm:py-12 text-white border-y border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 md:gap-8 text-center">
-            <div className="p-3 sm:p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex flex-col justify-center">
-              <div className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-black text-emerald-400 tracking-tight leading-tight">
+      {/* 4. Stat Counter & Key Institutional Achievements Bar (Spaced & Animated) */}
+      <section className="relative py-12 sm:py-16 bg-[#080E1D] text-white border-y border-[#1B2945] my-6 sm:my-10 overflow-hidden">
+        {/* Ambient Glows */}
+        <div className="absolute -top-24 left-1/4 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 right-1/4 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          {/* Section Subtitle Badge */}
+          <div className="text-center mb-8 sm:mb-10">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-bold shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+              <Trophy className="w-3.5 h-3.5 text-emerald-400" />
+              Verified Academic Accolades &amp; Institutional Standing
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-6 text-center">
+            {/* Card 1: 1st Position */}
+            <div className="group relative p-4 sm:p-6 rounded-2xl bg-gradient-to-b from-[#101C33] to-[#0A1224] border border-[#1E2E50] hover:border-emerald-400/60 shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 transition-all duration-300 transform hover:-translate-y-2 hover:scale-[1.03] active:scale-95 cursor-pointer flex flex-col justify-between overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] uppercase font-bold text-emerald-400/80 tracking-wider">
+                  DISTRICT HONORS
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:rotate-12 transition-transform duration-300">
+                  <Trophy className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-emerald-400 to-teal-300 tracking-tight leading-tight my-1">
                 1st Position
               </div>
-              <div className="text-[10px] sm:text-xs uppercase tracking-wider text-slate-400 mt-1.5 font-semibold leading-tight">
+              <div className="text-[10px] sm:text-xs text-slate-300 font-semibold leading-tight mt-1">
                 Ondo Central Senatorial Dist. (2025)
               </div>
+              <div className="w-8 h-1 bg-emerald-500/30 rounded-full group-hover:w-full group-hover:bg-emerald-400 transition-all duration-300 mx-auto mt-3" />
             </div>
 
-            <div className="p-3 sm:p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex flex-col justify-center">
-              <div className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-black text-emerald-400 tracking-tight leading-tight">
+            {/* Card 2: Top JAMB UTME Score */}
+            <div className="group relative p-4 sm:p-6 rounded-2xl bg-gradient-to-b from-[#101C33] to-[#0A1224] border border-[#1E2E50] hover:border-emerald-400/60 shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 transition-all duration-300 transform hover:-translate-y-2 hover:scale-[1.03] active:scale-95 cursor-pointer flex flex-col justify-between overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] uppercase font-bold text-blue-400/80 tracking-wider">
+                  UTME EXCELLENCE
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 group-hover:rotate-12 transition-transform duration-300">
+                  <GraduationCap className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-emerald-400 to-teal-300 tracking-tight leading-tight my-1 font-mono">
                 285
               </div>
-              <div className="text-[10px] sm:text-xs uppercase tracking-wider text-slate-400 mt-1.5 font-semibold leading-tight">
+              <div className="text-[10px] sm:text-xs text-slate-300 font-semibold leading-tight mt-1">
                 Top JAMB UTME Score
               </div>
+              <div className="w-8 h-1 bg-blue-500/30 rounded-full group-hover:w-full group-hover:bg-emerald-400 transition-all duration-300 mx-auto mt-3" />
             </div>
 
-            <div className="p-3 sm:p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex flex-col justify-center">
-              <div className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-black text-emerald-400 tracking-tight leading-tight">
+            {/* Card 3: 100% Malpractice-Free */}
+            <div className="group relative p-4 sm:p-6 rounded-2xl bg-gradient-to-b from-[#101C33] to-[#0A1224] border border-[#1E2E50] hover:border-emerald-400/60 shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 transition-all duration-300 transform hover:-translate-y-2 hover:scale-[1.03] active:scale-95 cursor-pointer flex flex-col justify-between overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] uppercase font-bold text-emerald-400/80 tracking-wider">
+                  ETHICAL AUDIT
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:rotate-12 transition-transform duration-300">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-emerald-400 to-teal-300 tracking-tight leading-tight my-1 font-mono">
                 100%
               </div>
-              <div className="text-[10px] sm:text-xs uppercase tracking-wider text-slate-400 mt-1.5 font-semibold leading-tight">
-                Malpractice-Free Exams
+              <div className="text-[10px] sm:text-xs text-slate-300 font-semibold leading-tight mt-1">
+                Malpractice-Free Exams (WAEC &amp; NECO)
               </div>
+              <div className="w-8 h-1 bg-emerald-500/30 rounded-full group-hover:w-full group-hover:bg-emerald-400 transition-all duration-300 mx-auto mt-3" />
             </div>
 
-            <div className="p-3 sm:p-5 rounded-2xl bg-slate-900/60 border border-slate-800/80 flex flex-col justify-center">
-              <div className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-black text-emerald-400 tracking-tight leading-tight">
+            {/* Card 4: 3 Campuses */}
+            <div className="group relative p-4 sm:p-6 rounded-2xl bg-gradient-to-b from-[#101C33] to-[#0A1224] border border-[#1E2E50] hover:border-emerald-400/60 shadow-lg hover:shadow-2xl hover:shadow-emerald-500/20 transition-all duration-300 transform hover:-translate-y-2 hover:scale-[1.03] active:scale-95 cursor-pointer flex flex-col justify-between overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] uppercase font-bold text-amber-400/80 tracking-wider">
+                  EXPANDED CAPACITY
+                </span>
+                <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:rotate-12 transition-transform duration-300">
+                  <Building2 className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-emerald-400 to-teal-300 tracking-tight leading-tight my-1">
                 3 Campuses
               </div>
-              <div className="text-[10px] sm:text-xs uppercase tracking-wider text-slate-400 mt-1.5 font-semibold leading-tight">
+              <div className="text-[10px] sm:text-xs text-slate-300 font-semibold leading-tight mt-1">
                 High School, Omi Eja, Madinah
               </div>
+              <div className="w-8 h-1 bg-amber-500/30 rounded-full group-hover:w-full group-hover:bg-emerald-400 transition-all duration-300 mx-auto mt-3" />
             </div>
           </div>
         </div>

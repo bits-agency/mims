@@ -164,56 +164,65 @@ export default function Navbar({ currentPath }: NavbarProps) {
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer (Floats ABOVE Hero without pushing down page layout) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-b border-slate-200 px-5 py-4 space-y-3 shadow-xl animate-in slide-in-from-top duration-200">
-          <div className="flex flex-col space-y-1">
-            {navLinks.map((link) => {
-              const active = isActive(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
-                    active
-                      ? 'bg-emerald-50 text-emerald-700 font-bold'
-                      : 'text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
+        <>
+          {/* Dimmed Backdrop */}
+          <div
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 lg:hidden animate-in fade-in duration-200"
+          />
 
-          <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
-            <Link
-              href="/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center text-xs font-bold py-2.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
-            >
-              School Portal Sign In
-            </Link>
-            {isAdmissionsOpen ? (
+          {/* Floating Dropdown Panel */}
+          <div className="lg:hidden absolute top-full left-0 right-0 w-full bg-white/98 backdrop-blur-xl border-b border-slate-200 px-5 py-5 space-y-3 shadow-2xl z-50 animate-in slide-in-from-top-2 duration-200">
+            <div className="flex flex-col space-y-1">
+              {navLinks.map((link) => {
+                const active = isActive(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`px-3.5 py-2.5 rounded-xl text-sm font-semibold transition ${
+                      active
+                        ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/60'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex flex-col gap-2.5">
               <Link
-                href="/admissions/apply"
+                href="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center text-xs font-bold py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-xs"
+                className="w-full text-center text-xs font-bold py-3 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition shadow-2xs"
               >
-                Apply for Admission 2026/2027
+                School Portal Sign In
               </Link>
-            ) : (
-              <Link
-                href="/admissions"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center text-xs font-bold py-2.5 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition shadow-xs border border-slate-700"
-              >
-                Admissions Closed — View Programs
-              </Link>
-            )}
+              {isAdmissionsOpen ? (
+                <Link
+                  href="/admissions/apply"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center text-xs font-bold py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-md shadow-emerald-600/20"
+                >
+                  Apply for Admission 2026/2027
+                </Link>
+              ) : (
+                <Link
+                  href="/admissions"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center text-xs font-bold py-3 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition shadow-xs border border-slate-700"
+                >
+                  Admissions Closed — View Programs
+                </Link>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </header>
   );
