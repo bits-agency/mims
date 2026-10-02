@@ -91,7 +91,7 @@ export default function HomePage() {
       <Navbar currentPath="/" />
 
       {/* 3. Dynamic Changing Hero Slideshow Section */}
-      <section className="relative overflow-hidden bg-slate-950 text-white py-24 sm:py-32 lg:py-40 min-h-[580px] flex items-center">
+      <section className="relative overflow-hidden bg-slate-950 text-white py-14 sm:py-24 lg:py-32 min-h-[460px] sm:min-h-[560px] lg:min-h-[640px] flex items-center">
         {heroSlides.map((slide, index) => (
           <div
             key={index}
@@ -108,31 +108,31 @@ export default function HomePage() {
         ))}
 
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold mb-6 backdrop-blur-md">
+          <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-bold mb-4 sm:mb-6 backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               {heroSlides[currentSlide].tag}
             </div>
 
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-snug sm:leading-tight mb-4 sm:mb-6">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-[1.12] sm:leading-[1.08] mb-4 sm:mb-6 text-white drop-shadow-sm">
               {heroSlides[currentSlide].title}
             </h1>
 
-            <p className="text-sm sm:text-base md:text-lg text-slate-200 mb-6 sm:mb-8 leading-relaxed font-medium">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-slate-100 mb-6 sm:mb-8 leading-relaxed font-normal sm:font-medium max-w-3xl drop-shadow-sm">
               {heroSlides[currentSlide].desc}
             </p>
 
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
               <Link
                 href="/admissions/apply"
-                className="inline-flex items-center gap-2 px-5 sm:px-6 py-3 sm:py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm transition shadow-xl shadow-emerald-500/30"
+                className="inline-flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-base transition shadow-xl shadow-emerald-500/30 transform active:scale-95"
               >
                 Apply for Admission
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
                 href="/about"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm backdrop-blur-md border border-white/20 transition"
+                className="inline-flex items-center gap-2 px-6 sm:px-7 py-3 sm:py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-base backdrop-blur-md border border-white/20 transition transform active:scale-95"
               >
                 Learn About MIMS
               </Link>

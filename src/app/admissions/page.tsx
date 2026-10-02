@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -17,10 +18,46 @@ import {
   Compass,
   Award,
   Layers,
-  HelpCircle
+  HelpCircle,
+  AlertCircle,
+  XCircle,
+  Phone,
+  Mail
 } from 'lucide-react';
 
 export default function AdmissionsPage() {
+  const [gateConfig, setGateConfig] = useState<{
+    isOpen: boolean;
+    targetSession: string;
+    announcementNotice?: string;
+    closedNotice?: string;
+  }>({
+    isOpen: true,
+    targetSession: '2026/2027 Academic Session',
+    announcementNotice: 'Admissions Open for 2026/2027 Academic Session',
+    closedNotice: 'Online admissions for the current academic cycle are currently closed.'
+  });
+
+  useEffect(() => {
+    async function loadGate() {
+      try {
+        const res = await fetch('/api/cms/admissions-gate');
+        const data = await res.json();
+        if (data?.success && data.config) {
+          setGateConfig({
+            isOpen: typeof data.config.isOpen === 'boolean' ? data.config.isOpen : true,
+            targetSession: data.config.targetSession || '2026/2027 Academic Session',
+            announcementNotice: data.config.announcementNotice,
+            closedNotice: data.config.closedNotice,
+          });
+        }
+      } catch (err) {
+        console.warn('Could not load admissions gate config:', err);
+      }
+    }
+    loadGate();
+  }, []);
+
   const steps = [
     {
       step: '01',
@@ -51,10 +88,17 @@ export default function AdmissionsPage() {
       {/* Hero Header */}
       <section className="relative bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 text-white py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-bold uppercase tracking-wider">
-            <GraduationCap className="w-4 h-4 text-emerald-400" />
-            <span>Admissions Open for 2026/2027 Academic Session</span>
-          </div>
+          {gateConfig.isOpen ? (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-bold uppercase tracking-wider">
+              <GraduationCap className="w-4 h-4 text-emerald-400" />
+              <span>{gateConfig.announcementNotice ? 'Admissions Open' : `Admissions Open for ${gateConfig.targetSession}`}</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/25 border border-rose-400/40 text-rose-300 text-xs sm:text-sm font-bold uppercase tracking-wider animate-pulse">
+              <XCircle className="w-4 h-4 text-rose-400" />
+              <span>Online Admissions Closed for {gateConfig.targetSession}</span>
+            </div>
+          )}
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
             Academic Programs, Curricula &amp; Enrollment Guide
@@ -64,14 +108,35 @@ export default function AdmissionsPage() {
             MSSN Islamic Model Schools, Akure provides a seamless developmental educational ladder spanning Early Childhood Care, Basic Primary School, Junior &amp; Senior Secondary College, and an elite Special Hifzul Qur’an Academy.
           </p>
 
+          {/* If Closed, display prominent notice banner */}
+          {!gateConfig.isOpen && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed shadow-xl text-left flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              <div>
+                <strong className="block text-white font-bold mb-1">Admissions Window Notice:</strong>
+                {gateConfig.closedNotice || 'Online admissions for the current academic cycle are currently closed. All entrance screening tests have concluded. For transfer inquiries, kindly contact the Principal\'s Office directly.'}
+              </div>
+            </div>
+          )}
+
           <div className="pt-2 flex flex-wrap justify-center gap-4 text-xs sm:text-sm font-bold">
-            <Link
-              href="/admissions/apply"
-              className="px-7 py-3 rounded-xl bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition shadow-lg flex items-center gap-2"
-            >
-              <span>Begin Online Application</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            {gateConfig.isOpen ? (
+              <Link
+                href="/admissions/apply"
+                className="px-7 py-3 rounded-xl bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition shadow-lg flex items-center gap-2 font-bold"
+              >
+                <span>Begin Online Application</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <Link
+                href="/contact"
+                className="px-7 py-3 rounded-xl bg-rose-600/90 text-white hover:bg-rose-600 transition shadow-lg flex items-center gap-2 font-bold border border-rose-400/40"
+              >
+                <span>Admissions Closed — Contact School</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            )}
             <Link
               href="/contact"
               className="px-7 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition"
@@ -361,12 +426,21 @@ export default function AdmissionsPage() {
             Apply online today in less than 5 minutes. Secure an examination slot at your preferred center in Akure.
           </p>
           <div className="flex flex-wrap justify-center gap-4 text-xs sm:text-sm font-bold">
-            <Link
-              href="/admissions/apply"
-              className="px-8 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition shadow-lg"
-            >
-              Fill Application Form Now
-            </Link>
+            {gateConfig.isOpen ? (
+              <Link
+                href="/admissions/apply"
+                className="px-8 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition shadow-lg"
+              >
+                Fill Application Form Now
+              </Link>
+            ) : (
+              <Link
+                href="/contact"
+                className="px-8 py-3.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition shadow-lg border border-rose-400/40"
+              >
+                Admissions Closed — Contact School
+              </Link>
+            )}
             <Link
               href="/contact"
               className="px-8 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-emerald-800 text-white transition"

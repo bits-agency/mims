@@ -9,10 +9,17 @@ export async function GET() {
       try {
         const supabase = getAdminClient();
 
-        // Count students
-        const { count: studentCount } = await supabase
+        // Count enrolled students (with assigned class)
+        const { count: enrolledCount } = await supabase
           .from('students')
-          .select('*', { count: 'exact', head: true });
+          .select('*', { count: 'exact', head: true })
+          .not('class_id', 'is', null);
+
+        // Count pending admission applicants (without assigned class)
+        const { count: applicantCount } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .is('class_id', null);
 
         // Count staff
         const { count: staffCount } = await supabase
@@ -28,7 +35,8 @@ export async function GET() {
 
         return NextResponse.json({
           success: true,
-          students: studentCount ?? 0,
+          students: enrolledCount ?? 0,
+          pendingApplicants: applicantCount ?? 0,
           staff: staffCount ?? 0,
           revenue: totalRevenue,
           attendanceRate: 0,

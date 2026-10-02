@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MessageSquare,
   Bell,
@@ -21,58 +21,63 @@ export default function TeacherMessagesPage() {
   const [subjectTitle, setSubjectTitle] = useState('');
   const [messageBody, setMessageBody] = useState('');
   const [broadcastSent, setBroadcastSent] = useState(false);
+  const [circulars, setCirculars] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const circulars = [
-    {
-      id: '1',
-      title: 'First Term Continuous Assessment (CA) Submission Deadline',
-      category: 'exam',
-      author: 'Office of the Vice Principal (Academics)',
-      date: 'Oct 01, 2026',
-      isPinned: true,
-      content:
-        'All subject teachers are hereby notified that the portal portal for entering CA 1 and CA 2 scores will close on Friday, October 16th at 4:00 PM. Kindly ensure all student scores and academic remarks are saved and submitted for moderation. Results will remain concealed from students until administrative release.',
-    },
-    {
-      id: '2',
-      title: 'Mandatory Faculty Meeting: WAEC & NECO Registration Review',
-      category: 'admin',
-      author: 'Principal / Management Board',
-      date: 'Sep 28, 2026',
-      isPinned: true,
-      content:
-        'There will be a crucial staff briefing this Thursday after Salat Az-Zuhr in the High School Staff Common Room. Attendance is mandatory for all senior secondary subject tutors.',
-    },
-    {
-      id: '3',
-      title: 'Science Laboratory Equipment & Safety Inspection',
-      category: 'admin',
-      author: 'Head of Science Department',
-      date: 'Sep 24, 2026',
-      isPinned: false,
-      content:
-        'New physics and chemistry apparatus have arrived at the Central Science Laboratory. Teachers conducting practical sessions must record apparatus issuance in the laboratory logbook.',
-    },
-    {
-      id: '4',
-      title: 'Guidelines on Daily Roll Call and Attendance Registers',
-      category: 'admin',
-      author: 'School Registry & Student Affairs',
-      date: 'Sep 20, 2026',
-      isPinned: false,
-      content:
-        'Please ensure daily subject attendance is marked before 11:00 AM each morning. Unexcused consecutive absences beyond 3 days must be reported to the Disciplinary Committee.',
-    },
-  ];
+  const loadCirculars = async () => {
+    try {
+      const res = await fetch('/api/announcements');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.announcements)) {
+        const mapped = data.announcements.map((a: any) => ({
+          id: a.id,
+          title: a.title,
+          category: a.category?.toLowerCase() === 'exam' ? 'exam' : 'admin',
+          author: a.sender || 'Office of the Principal',
+          date: a.date,
+          isPinned: !!a.pinned,
+          content: a.message,
+        }));
+        setCirculars(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to load announcements for teachers:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleSendBroadcast = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadCirculars();
+  }, []);
+
+  const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjectTitle || !messageBody) return;
-    setBroadcastSent(true);
-    setComposeOpen(false);
-    setSubjectTitle('');
-    setMessageBody('');
-    setTimeout(() => setBroadcastSent(false), 4000);
+    try {
+      const res = await fetch('/api/announcements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `[${targetClass}] ${subjectTitle.trim()}`,
+          message: messageBody.trim(),
+          category: 'Academic',
+          pinned: false,
+          audience: 'students',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBroadcastSent(true);
+        setComposeOpen(false);
+        setSubjectTitle('');
+        setMessageBody('');
+        loadCirculars();
+        setTimeout(() => setBroadcastSent(false), 4000);
+      }
+    } catch (err) {
+      console.error('Failed to post announcement:', err);
+    }
   };
 
   const filteredCirculars = circulars.filter((c) => {

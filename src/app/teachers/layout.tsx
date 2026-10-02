@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -34,6 +34,28 @@ export default function TeacherPortalLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.authenticated && data?.user) {
+          setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const displayName = currentUser?.fullName || currentUser?.username || 'Staff Faculty';
+  const roleTitle = currentUser?.role === 'teacher' ? 'Class / Subject Teacher' : (currentUser?.role || 'Teacher');
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .map((p: string) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'TC';
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -45,7 +67,7 @@ export default function TeacherPortalLayout({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex font-sans">
+    <div className="h-screen bg-slate-50 text-slate-800 flex font-sans overflow-hidden">
       {/* 1. Desktop Dark Navy Sidebar (Permanently fixed to viewport) */}
       <aside className="fixed inset-y-0 left-0 w-64 bg-[#0B132B] text-slate-300 flex flex-col justify-between hidden lg:flex border-r border-slate-800 z-30 h-screen">
         <div className="flex-1 overflow-y-auto">
@@ -102,16 +124,14 @@ export default function TeacherPortalLayout({
         <div className="p-4 border-t border-slate-800 bg-[#070D1E] shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=120&auto=format&fit=crop"
-                alt="Teacher avatar"
-                className="w-10 h-10 rounded-xl object-cover ring-2 ring-emerald-500/30"
-              />
-              <div>
-                <p className="text-xs font-bold text-white leading-tight">
-                  Mrs. Zainab Yusuf
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-bold text-sm flex items-center justify-center shadow">
+                {initials}
+              </div>
+              <div className="truncate max-w-[120px]">
+                <p className="text-xs font-bold text-white leading-tight truncate">
+                  {displayName}
                 </p>
-                <p className="text-[10px] text-slate-400 font-medium">Science Master • SS 2 &amp; 3</p>
+                <p className="text-[10px] text-emerald-400 font-medium truncate">{roleTitle}</p>
               </div>
             </div>
             <button
@@ -191,14 +211,12 @@ export default function TeacherPortalLayout({
             <div className="p-4 border-t border-slate-800 bg-[#070D1E]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=120&auto=format&fit=crop"
-                    alt="Teacher avatar"
-                    className="w-9 h-9 rounded-xl object-cover ring-2 ring-emerald-500/30"
-                  />
-                  <div>
-                    <p className="text-xs font-bold text-white leading-tight">Mrs. Zainab Yusuf</p>
-                    <p className="text-[10px] text-slate-400">Physics Master</p>
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white font-bold text-xs flex items-center justify-center shadow">
+                    {initials}
+                  </div>
+                  <div className="truncate max-w-[120px]">
+                    <p className="text-xs font-bold text-white leading-tight truncate">{displayName}</p>
+                    <p className="text-[10px] text-emerald-400 truncate">{roleTitle}</p>
                   </div>
                 </div>
                 <button
@@ -215,9 +233,9 @@ export default function TeacherPortalLayout({
       )}
 
       {/* 3. Main Content Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64 h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 sm:h-20 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
+        <header className="sticky top-0 h-16 sm:h-20 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between shrink-0 z-20 shadow-xs">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}

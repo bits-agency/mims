@@ -161,7 +161,7 @@ export default function StudentDashboardPage() {
         </Link>
 
         {/* Card 3: Class Arm */}
-        <Link href="/students/courses" className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:border-purple-300 transition">
+        <Link href="/students/profile" className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:border-purple-300 transition">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] uppercase font-bold tracking-wider text-slate-400">
               ENROLLED CLASS

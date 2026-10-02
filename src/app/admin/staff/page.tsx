@@ -99,6 +99,8 @@ export default function AdminStaffPage() {
   const [formPhone, setFormPhone] = useState('');
   const [formRole, setFormRole] = useState<StaffMember['role']>('Teacher');
   const [formDept, setFormDept] = useState<StaffMember['department']>('Sciences');
+  const [formPassword, setFormPassword] = useState('Mimsakure27');
+  const [showPassword, setShowPassword] = useState(false);
   
   // Advanced Allocation State
   const [allocationMode, setAllocationMode] = useState<'specialist' | 'class_teacher'>('specialist');
@@ -231,6 +233,8 @@ export default function AdminStaffPage() {
     setAllocationMode('specialist');
     const primaryCls = availableClasses.find((c) => c.wing === 'Primary') || availableClasses[0];
     setClassTeacherClassId(primaryCls?.id || '');
+    setFormPassword('Mimsakure27');
+    setShowPassword(false);
     setAssignmentPairs([
       { id: '1', subject: 'English Language', classId: availableClasses[0]?.id || '' }
     ]);
@@ -287,9 +291,10 @@ export default function AdminStaffPage() {
       .filter((c) => (allocationMode === 'class_teacher' ? c.id === classTeacherClassId : uniqueClassIds.includes(c.id)))
       .map((c) => `${c.className} (${c.section})`);
 
+    const nextNumber = String(staffList.length + 1).padStart(3, '0');
     const newStaff: StaffMember = {
       id: `stf-${Date.now()}`,
-      staffId: `MIMS/STF/2026/0${staffList.length + 10}`,
+      staffId: `MIMS/STF/${nextNumber}`,
       name: formName,
       email: formEmail,
       phone: formPhone || '+234 800 000 0000',
@@ -320,6 +325,8 @@ export default function AdminStaffPage() {
           email: formEmail,
           phone: formPhone,
           department: formDept,
+          role: formRole,
+          password: formPassword.trim() || 'Mimsakure27',
           isClassTeacher: allocationMode === 'class_teacher',
           classTeacherClassId: allocationMode === 'class_teacher' ? classTeacherClassId : null,
           teachingAssignments: allocationMode === 'specialist' ? validPairs.map((p) => ({ subject: p.subject.trim(), classId: p.classId })) : [],
@@ -329,7 +336,7 @@ export default function AdminStaffPage() {
       });
 
       if (res.ok) {
-        showToast(`Account successfully provisioned for ${newStaff.name}!`);
+        showToast(`Account provisioned for ${newStaff.name}! Temporary Password: ${formPassword.trim() || 'Mimsakure27'}`);
         setIsAddModalOpen(false);
         loadData();
       } else {
@@ -363,6 +370,7 @@ export default function AdminStaffPage() {
           email: formEmail,
           phone: formPhone,
           department: formDept,
+          role: formRole,
           isClassTeacher: allocationMode === 'class_teacher',
           classTeacherClassId: allocationMode === 'class_teacher' ? classTeacherClassId : null,
           teachingAssignments: allocationMode === 'specialist' ? validPairs.map((p) => ({ subject: p.subject.trim(), classId: p.classId })) : [],
@@ -387,8 +395,27 @@ export default function AdminStaffPage() {
     }
   };
 
-  const handleResetPassword = (name: string, email: string) => {
-    showToast(`Password reset link generated and dispatched to ${email} for ${name}.`);
+  const handleResetPassword = async (name: string, email: string) => {
+    const defaultNewPass = 'Mimsakure27';
+    const confirmReset = window.confirm(`Reset security password for "${name}" (${email}) to default "${defaultNewPass}"?`);
+    if (!confirmReset) return;
+
+    try {
+      const target = staffList.find((s) => s.email === email);
+      if (target) {
+        await fetch('/api/admin/staff', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: target.id, password: defaultNewPass }),
+        });
+      }
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(defaultNewPass).catch(() => {});
+      }
+      showToast(`Password for ${name} reset to "${defaultNewPass}"! (Copied to clipboard)`);
+    } catch {
+      showToast(`Password reset link dispatched to ${email}.`);
+    }
   };
 
   const handleToggleStatus = (id: string) => {
@@ -571,26 +598,34 @@ export default function AdminStaffPage() {
                       <div className="text-[10px] text-slate-500">Joined {staff.joinDate}</div>
                     </td>
 
-                    <td className="py-3.5 px-4 max-w-[240px]">
+                    <td className="py-3.5 px-4 max-w-[260px]">
                       {staff.isClassTeacher ? (
                         <div className="flex flex-col gap-1">
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20">
                             👑 Primary Class Teacher
                           </span>
-                          <span className="text-[10px] text-slate-400">All Core Subjects</span>
+                          <span className="text-[10px] text-slate-400">All 9 Core Subjects</span>
                         </div>
                       ) : staff.teachingPairs && staff.teachingPairs.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {staff.teachingPairs.map((pair, i) => (
-                            <span
-                              key={i}
-                              className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-[10px] font-medium text-emerald-300 flex items-center gap-1"
-                            >
-                              <span>{pair.subject}</span>
-                              <span className="text-slate-500">➔</span>
-                              <span className="text-slate-200 font-semibold">{pair.className}</span>
-                            </span>
-                          ))}
+                        <div className="space-y-1.5">
+                          {(() => {
+                            const grouped: Record<string, string[]> = {};
+                            staff.teachingPairs.forEach((p) => {
+                              const c = p.className || 'Class';
+                              if (!grouped[c]) grouped[c] = [];
+                              grouped[c].push(p.subject);
+                            });
+                            return Object.entries(grouped).map(([cls, subs], i) => (
+                              <div key={i} className="flex items-center gap-1.5 flex-wrap">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-bold text-[10px] border border-emerald-500/30 shrink-0">
+                                  {cls}:
+                                </span>
+                                <span className="text-[10px] text-slate-300 font-medium">
+                                  {subs.join(', ')}
+                                </span>
+                              </div>
+                            ));
+                          })()}
                         </div>
                       ) : (
                         <div className="flex flex-wrap gap-1">
@@ -760,7 +795,15 @@ export default function AdminStaffPage() {
                   <label className="text-xs font-semibold text-slate-300 block mb-1">Portal Role</label>
                   <select
                     value={formRole}
-                    onChange={(e) => setFormRole(e.target.value as StaffMember['role'])}
+                    onChange={(e) => {
+                      const newRole = e.target.value as StaffMember['role'];
+                      setFormRole(newRole);
+                      if (newRole === 'Bursar') {
+                        setFormDept('Bursary');
+                      } else if (formDept === 'Bursary') {
+                        setFormDept('Sciences');
+                      }
+                    }}
                     className="w-full px-3 py-2 bg-[#0D1527] border border-[#213357] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
                     <option value="Teacher">Teacher (Grades & Attendance)</option>
@@ -770,20 +813,55 @@ export default function AdminStaffPage() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Department</label>
-                  <select
-                    value={formDept}
-                    onChange={(e) => setFormDept(e.target.value as StaffMember['department'])}
-                    className="w-full px-3 py-2 bg-[#0D1527] border border-[#213357] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                {formRole !== 'Bursar' ? (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Department</label>
+                    <select
+                      value={formDept}
+                      onChange={(e) => setFormDept(e.target.value as StaffMember['department'])}
+                      className="w-full px-3 py-2 bg-[#0D1527] border border-[#213357] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="Sciences">Sciences</option>
+                      <option value="Arts & Humanities">Arts & Humanities</option>
+                      <option value="Islamic Studies">Islamic Studies</option>
+                      <option value="Administration">Administration</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">Directorate Scope</label>
+                    <div className="px-3 py-2 bg-[#0A101D] border border-[#1E2E50] rounded-xl text-xs text-teal-400 font-bold flex items-center gap-1.5 h-[38px]">
+                      <Shield className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Bursary &amp; Accounts</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Temporary Password Field */}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                  Temporary Login Password <span className="text-emerald-400">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-[#0D1527] border border-[#213357] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500 font-mono pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                   >
-                    <option value="Sciences">Sciences</option>
-                    <option value="Arts & Humanities">Arts & Humanities</option>
-                    <option value="Islamic Studies">Islamic Studies</option>
-                    <option value="Administration">Administration</option>
-                    <option value="Bursary">Bursary</option>
-                  </select>
+                    {showPassword ? <Eye className="w-4 h-4 text-emerald-400" /> : <Eye className="w-4 h-4 opacity-50" />}
+                  </button>
                 </div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Default credentials: <span className="text-emerald-400 font-mono font-bold">Mimsakure27</span>. Staff can change this upon first login via their portal profile.
+                </p>
               </div>
 
               {/* Teaching Assignment Allocation */}

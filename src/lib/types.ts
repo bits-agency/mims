@@ -1,5 +1,5 @@
-export type UserRole = 'admin' | 'teacher' | 'student' | 'bursar';
-export type UserStatus = 'active' | 'inactive' | 'pending';
+export type UserRole = 'admin' | 'teacher' | 'student' | 'bursar' | 'super_admin';
+export type UserStatus = 'active' | 'inactive' | 'pending' | 'suspended';
 
 export type ExamStatus = 'pending' | 'scheduled' | 'passed' | 'failed';
 export type ResultStatus = 'pending' | 'approved';

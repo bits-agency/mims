@@ -18,7 +18,8 @@ import {
   X,
   CreditCard,
   Building,
-  Inbox
+  Inbox,
+  Key
 } from 'lucide-react';
 
 interface StudentRecord {
@@ -43,12 +44,23 @@ export default function AdminStudentRegistryPage() {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [feeFilter, setFeeFilter] = useState('All');
   const [selectedStudent, setSelectedStudent] = useState<StudentRecord | null>(null);
+  const [pendingApplicantCount, setPendingApplicantCount] = useState<number>(0);
 
   useEffect(() => {
     async function loadStudents() {
       try {
-        const res = await fetch('/api/admin/students');
-        const data = await res.json();
+        const [res, appRes] = await Promise.all([
+          fetch('/api/admin/students'),
+          fetch('/api/admissions/applicants'),
+        ]);
+
+        const data = await res.json().catch(() => ({}));
+        const appData = await appRes.json().catch(() => ({}));
+
+        if (appData?.success && appData.applicants) {
+          setPendingApplicantCount(appData.applicants.length);
+        }
+
         if (data?.success && data.students) {
           const mapped: StudentRecord[] = data.students.map((s: any) => {
             const clr = s.student_fee_clearance?.[0];
@@ -79,6 +91,31 @@ export default function AdminStudentRegistryPage() {
     }
     loadStudents();
   }, []);
+
+  const handleResetStudentPassword = async (std: StudentRecord) => {
+    const defaultPassword = 'Mimsakure27';
+    const confirm = window.confirm(`Reset portal login password for student "${std.name}" (${std.admissionNo}) to default "${defaultPassword}"?`);
+    if (!confirm) return;
+
+    try {
+      const res = await fetch('/api/admin/students/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId: std.id, newPassword: defaultPassword }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(defaultPassword).catch(() => {});
+        }
+        alert(`Success: Password for ${std.name} has been reset to "${defaultPassword}"! (Copied to clipboard)`);
+      } else {
+        alert(data.error || 'Failed to reset password');
+      }
+    } catch {
+      alert('Network error resetting student password');
+    }
+  };
 
   const filtered = students.filter((s) => {
     const matchesSearch =
@@ -124,6 +161,27 @@ export default function AdminStudentRegistryPage() {
           </Link>
         </div>
       </div>
+
+      {/* Pending Applicants Notice */}
+      {pendingApplicantCount > 0 && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-emerald-300">
+            <GraduationCap className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div>
+              <strong className="text-white font-bold">Online Admission Applicants Awaiting Review</strong>
+              <p className="text-[11px] text-slate-300 mt-0.5">
+                You have {pendingApplicantCount} prospective candidate {pendingApplicantCount === 1 ? 'applicant' : 'applicants'} waiting for entrance screening &amp; class allocation.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/admissions"
+            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition shrink-0 text-center"
+          >
+            Go to Admissions Desk ({pendingApplicantCount}) →
+          </Link>
+        </div>
+      )}
 
       {/* Summary Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -273,12 +331,21 @@ export default function AdminStudentRegistryPage() {
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => setSelectedStudent(std)}
-                        className="px-3 py-1.5 rounded-lg bg-[#182645] hover:bg-[#203259] text-slate-200 font-bold text-xs transition border border-[#253961]"
-                      >
-                        View Dossier
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => setSelectedStudent(std)}
+                          className="px-3 py-1.5 rounded-lg bg-[#182645] hover:bg-[#203259] text-slate-200 font-bold text-xs transition border border-[#253961]"
+                        >
+                          View Dossier
+                        </button>
+                        <button
+                          onClick={() => handleResetStudentPassword(std)}
+                          title="Reset Student Password to Default"
+                          className="p-1.5 rounded-lg bg-[#182645] hover:bg-[#203259] text-amber-300 transition border border-[#253961]"
+                        >
+                          <Key className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

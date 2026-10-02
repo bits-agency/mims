@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X, ArrowRight, ShieldCheck, Phone, MapPin } from 'lucide-react';
+import { Menu, X, ArrowRight, ShieldCheck, Phone, MapPin, XCircle } from 'lucide-react';
 
 interface NavbarProps {
   currentPath?: string;
@@ -12,6 +12,22 @@ interface NavbarProps {
 export default function Navbar({ currentPath }: NavbarProps) {
   const pathname = usePathname() || currentPath || '/';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAdmissionsOpen, setIsAdmissionsOpen] = useState<boolean>(true);
+
+  useEffect(() => {
+    fetch('/api/cms/admissions-gate')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && data?.config) {
+          if (typeof data.config.isOpen === 'boolean') {
+            setIsAdmissionsOpen(data.config.isOpen);
+          } else if (typeof data.config.is_open === 'boolean') {
+            setIsAdmissionsOpen(data.config.is_open);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const navLinks = [
     { label: 'Home', href: '/' },
@@ -29,17 +45,37 @@ export default function Navbar({ currentPath }: NavbarProps) {
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       {/* Top Announcement Bar */}
-      <div className="bg-emerald-950 text-emerald-100 text-[11px] py-1.5 px-3 sm:px-6 border-b border-emerald-900">
+      <div className={`text-[10px] sm:text-[11px] py-1.5 px-3 sm:px-6 border-b transition-colors ${
+        isAdmissionsOpen
+          ? 'bg-emerald-950 text-emerald-100 border-emerald-900'
+          : 'bg-slate-900 text-slate-200 border-slate-800'
+      }`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 truncate min-w-0 flex-1 overflow-hidden">
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[9px] uppercase tracking-wider shrink-0">
-              Admissions 2026/2027
-            </span>
-            <span className="truncate min-w-0">
-              Entrance Exam &amp; Registration Ongoing Across All 3 Akure Campuses
-            </span>
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+            {isAdmissionsOpen ? (
+              <>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-black text-[9px] uppercase tracking-wider shrink-0">
+                  Admissions 2026/2027
+                </span>
+                <span className="truncate min-w-0 font-medium">
+                  <span className="hidden sm:inline">Entrance Exam &amp; Registration Ongoing Across All 3 Akure Campuses</span>
+                  <span className="inline sm:hidden">Registration Ongoing Across All 3 Campuses</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-black text-[9px] uppercase tracking-wider shrink-0 flex items-center gap-1">
+                  <XCircle className="w-2.5 h-2.5" />
+                  Closed
+                </span>
+                <span className="truncate min-w-0 text-slate-300 font-medium">
+                  <span className="hidden sm:inline">Online Admissions Closed • Campus Transfer Inquiries: +234 803 358 1947</span>
+                  <span className="inline sm:hidden">Online Admissions Closed • Enquiries: +234 803 358 1947</span>
+                </span>
+              </>
+            )}
           </div>
-          <div className="hidden sm:flex items-center gap-4 text-emerald-300 font-medium shrink-0">
+          <div className="hidden sm:flex items-center gap-4 text-emerald-300 font-medium shrink-0 text-xs">
             <span className="flex items-center gap-1">
               <Phone className="w-3 h-3 text-emerald-400" /> +234 803 358 1947
             </span>
@@ -96,13 +132,22 @@ export default function Navbar({ currentPath }: NavbarProps) {
           >
             Portal Login
           </Link>
-          <Link
-            href="/admissions/apply"
-            className="text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-xs whitespace-nowrap flex items-center gap-1.5"
-          >
-            <span>Apply Now</span>
-            <ArrowRight className="w-3.5 h-3.5 hidden sm:inline" />
-          </Link>
+          {isAdmissionsOpen ? (
+            <Link
+              href="/admissions/apply"
+              className="text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-xs whitespace-nowrap flex items-center gap-1.5"
+            >
+              <span>Apply Now</span>
+              <ArrowRight className="w-3.5 h-3.5 hidden sm:inline" />
+            </Link>
+          ) : (
+            <Link
+              href="/admissions"
+              className="text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition shadow-xs whitespace-nowrap flex items-center gap-1.5 border border-slate-700"
+            >
+              <span>Admissions Info</span>
+            </Link>
+          )}
 
           {/* Mobile Hamburger Button */}
           <button
@@ -150,13 +195,23 @@ export default function Navbar({ currentPath }: NavbarProps) {
             >
               School Portal Sign In
             </Link>
-            <Link
-              href="/admissions/apply"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center text-xs font-bold py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-xs"
-            >
-              Apply for Admission 2026/2027
-            </Link>
+            {isAdmissionsOpen ? (
+              <Link
+                href="/admissions/apply"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full text-center text-xs font-bold py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-xs"
+              >
+                Apply for Admission 2026/2027
+              </Link>
+            ) : (
+              <Link
+                href="/admissions"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full text-center text-xs font-bold py-2.5 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 transition shadow-xs border border-slate-700"
+              >
+                Admissions Closed — View Programs
+              </Link>
+            )}
           </div>
         </div>
       )}

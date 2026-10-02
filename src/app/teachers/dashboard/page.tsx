@@ -21,55 +21,65 @@ export default function TeacherDashboardPage() {
     name: 'Faculty Master',
     department: 'Academics & Subject Coordination',
   });
+  const [allocations, setAllocations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.authenticated && data.user) {
-          setTeacher({
-            name: data.user.fullName || data.user.username || 'Faculty Master',
-            department: data.user.profile?.department || 'Senior Academic Master',
-          });
-        }
-      })
-      .catch((err) => console.warn('Teacher auth fetch error:', err));
-  }, []);
+    Promise.all([
+      fetch('/api/auth/me').then((res) => res.json()).catch(() => null),
+      fetch('/api/teachers/allocations').then((res) => res.json()).catch(() => null),
+    ]).then(([authData, allocData]) => {
+      if (authData?.authenticated && authData.user) {
+        setTeacher({
+          name: authData.user.fullName || authData.user.username || 'Faculty Master',
+          department: authData.user.profile?.department || 'Senior Academic Master',
+        });
+      }
 
-  const teacherAllocations = [
-    {
-      subject: 'Physics',
-      classArm: 'SS 2 Science (Gold)',
-      totalStudents: 42,
-      gradingStatus: 'Draft Saved',
-      attendanceRate: '98.5%',
-      code: 'PHY-SS2-GLD',
-    },
-    {
-      subject: 'Physics',
-      classArm: 'SS 3 Science (Diamond)',
-      totalStudents: 38,
-      gradingStatus: 'Pending CA 2',
-      attendanceRate: '96.1%',
-      code: 'PHY-SS3-DMD',
-    },
-    {
-      subject: 'Further Mathematics',
-      classArm: 'SS 2 Science (Gold)',
-      totalStudents: 18,
-      gradingStatus: 'Submitted to Admin',
-      attendanceRate: '97.2%',
-      code: 'FMTH-SS2-GLD',
-    },
-    {
-      subject: 'Basic Science & Technology',
-      classArm: 'JSS 2 (Silver)',
-      totalStudents: 45,
-      gradingStatus: 'In Progress',
-      attendanceRate: '95.0%',
-      code: 'BST-JS2-SLV',
-    },
-  ];
+      if (allocData?.success && Array.isArray(allocData.allocations) && allocData.allocations.length > 0) {
+        const mapped = allocData.allocations.map((item: any) => {
+          const className = `${item.classes?.class_name || ''} ${item.classes?.section ? '(' + item.classes.section + ')' : ''}`.trim() || 'General Class';
+          const subCode = item.subject_name.slice(0, 3).toUpperCase() + '-' + (item.classes?.class_name || 'CLS').replace(/\s+/g, '');
+          return {
+            id: item.id,
+            classId: item.class_id,
+            subject: item.subject_name,
+            classArm: className,
+            totalStudents: 35,
+            gradingStatus: 'Continuous Assessment',
+            attendanceRate: '98%',
+            code: subCode,
+          };
+        });
+        setAllocations(mapped);
+      } else {
+        // Fallback demo allocation
+        setAllocations([
+          {
+            id: 'demo-1',
+            classId: '22222222-2222-2222-2222-222222222206',
+            subject: 'Physics',
+            classArm: 'SSS 2 (Science Gold)',
+            totalStudents: 42,
+            gradingStatus: 'Draft Saved',
+            attendanceRate: '98.5%',
+            code: 'PHY-SS2',
+          },
+          {
+            id: 'demo-2',
+            classId: '22222222-2222-2222-2222-222222222206',
+            subject: 'Further Mathematics',
+            classArm: 'SSS 2 (Science Gold)',
+            totalStudents: 28,
+            gradingStatus: 'In Progress',
+            attendanceRate: '97.2%',
+            code: 'FMTH-SS2',
+          }
+        ]);
+      }
+      setLoading(false);
+    });
+  }, []);
 
   return (
     <div className="p-6 space-y-6 max-w-6xl w-full mx-auto">
@@ -201,7 +211,7 @@ export default function TeacherDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {teacherAllocations.map((alloc, idx) => (
+          {allocations.map((alloc, idx) => (
             <div
               key={idx}
               className="p-5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-emerald-300 hover:shadow-md transition space-y-4"
@@ -236,13 +246,13 @@ export default function TeacherDashboardPage() {
 
               <div className="flex items-center gap-2 pt-2">
                 <Link
-                  href={`/teachers/grading?subject=${encodeURIComponent(alloc.subject)}&class=${encodeURIComponent(alloc.classArm)}`}
+                  href={`/teachers/grading?subjectId=${alloc.id}&classId=${alloc.classId}&subject=${encodeURIComponent(alloc.subject)}&class=${encodeURIComponent(alloc.classArm)}`}
                   className="flex-1 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 text-xs font-bold text-center transition"
                 >
                   Enter Scores
                 </Link>
                 <Link
-                  href={`/teachers/attendance?subject=${encodeURIComponent(alloc.subject)}&class=${encodeURIComponent(alloc.classArm)}`}
+                  href={`/teachers/attendance?subjectId=${alloc.id}&classId=${alloc.classId}&subject=${encodeURIComponent(alloc.subject)}&class=${encodeURIComponent(alloc.classArm)}`}
                   className="flex-1 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 text-xs font-bold text-center transition"
                 >
                   Take Attendance

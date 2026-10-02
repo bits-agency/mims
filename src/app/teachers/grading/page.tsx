@@ -33,19 +33,53 @@ interface StudentGradeRow {
 export default function TeacherGradingPage() {
   const [session, setSession] = useState('2025/2026');
   const [term, setTerm] = useState('first');
-  const [selectedAllocation, setSelectedAllocation] = useState('Physics — SS 2 Science (Gold)');
+  const [allocations, setAllocations] = useState<any[]>([]);
+  const [selectedAllocationId, setSelectedAllocationId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [students, setStudents] = useState<StudentGradeRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const isPastSession = session !== '2025/2026' || term !== 'first';
 
   useEffect(() => {
+    async function loadAllocations() {
+      try {
+        const res = await fetch('/api/teachers/allocations');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.allocations) && data.allocations.length > 0) {
+          const mapped = data.allocations.map((a: any) => ({
+            id: a.id,
+            classId: a.class_id,
+            label: `${a.subject_name} — ${a.classes?.class_name || ''} ${a.classes?.section ? '(' + a.classes.section + ')' : ''}`.trim(),
+            subjectName: a.subject_name,
+            className: a.classes?.class_name || '',
+          }));
+          setAllocations(mapped);
+          setSelectedAllocationId(mapped[0].id);
+        } else {
+          setAllocations([
+            { id: '55555555-5555-5555-5555-555555555503', classId: '22222222-2222-2222-2222-222222222206', label: 'Physics — SSS 2 Science (Gold)', subjectName: 'Physics', className: 'SSS 2' }
+          ]);
+          setSelectedAllocationId('55555555-5555-5555-5555-555555555503');
+        }
+      } catch (err) {
+        console.error('Failed to load allocations:', err);
+      }
+    }
+    loadAllocations();
+  }, []);
+
+  const currentAllocation = allocations.find((a) => a.id === selectedAllocationId) || allocations[0];
+
+  useEffect(() => {
     async function loadClassStudents() {
+      if (!currentAllocation) return;
       setLoading(true);
       try {
-        const res = await fetch('/api/admin/students');
+        const url = `/api/teachers/students?classId=${currentAllocation.classId || ''}&subjectId=${currentAllocation.id || ''}&session=${session}&term=${term}`;
+        const res = await fetch(url);
         const data = await res.json();
         if (data.success && data.students) {
           setStudents(
@@ -53,10 +87,10 @@ export default function TeacherGradingPage() {
               id: s.id,
               admissionNo: s.admission_no || 'MIMS/2026/0000',
               name: `${s.firstname || ''} ${s.lastname || ''}`.trim() || 'Student',
-              ca1: '',
-              ca2: '',
-              exam: '',
-              remark: '',
+              ca1: s.result?.ca1 ?? '',
+              ca2: s.result?.ca2 ?? '',
+              exam: s.result?.exam ?? '',
+              remark: s.result?.remark || '',
             }))
           );
         }
@@ -67,7 +101,7 @@ export default function TeacherGradingPage() {
       }
     }
     loadClassStudents();
-  }, []);
+  }, [selectedAllocationId, session, term]);
 
   const handleScoreChange = (
     id: string,
@@ -88,14 +122,51 @@ export default function TeacherGradingPage() {
     );
   };
 
+  const saveScoresToDatabase = async (status: 'draft' | 'submitted') => {
+    if (!currentAllocation) return;
+    setSaving(true);
+    setSaveStatus(null);
+    try {
+      const gradesPayload = students.map((s) => ({
+        studentId: s.id,
+        ca1: typeof s.ca1 === 'number' ? s.ca1 : 0,
+        ca2: typeof s.ca2 === 'number' ? s.ca2 : 0,
+        exam: typeof s.exam === 'number' ? s.exam : 0,
+        remark: s.remark,
+      }));
+
+      const res = await fetch('/api/teachers/grades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grades: gradesPayload,
+          subjectId: currentAllocation.id,
+          classId: currentAllocation.classId,
+          sessionName: session,
+          term: term,
+          status,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSaveStatus(data.message || (status === 'submitted' ? 'Scores submitted for moderation!' : 'Draft scores saved!'));
+      } else {
+        setSaveStatus(data.error || 'Failed to save scores.');
+      }
+    } catch (err: any) {
+      setSaveStatus(err?.message || 'Network error saving scores.');
+    } finally {
+      setSaving(false);
+      setTimeout(() => setSaveStatus(null), 5000);
+    }
+  };
+
   const handleSaveDraft = () => {
-    setSaveStatus('Draft scores saved in local workspace! Scores remain withheld from students.');
-    setTimeout(() => setSaveStatus(null), 3500);
+    saveScoresToDatabase('draft');
   };
 
   const handleSubmitAdmin = () => {
-    setSaveStatus('Scores successfully submitted to VP Academics & Exam Committee for terminal moderation!');
-    setTimeout(() => setSaveStatus(null), 4000);
+    saveScoresToDatabase('submitted');
   };
 
   const filteredStudents = students.filter(
@@ -204,14 +275,15 @@ export default function TeacherGradingPage() {
               Teaching Allocation
             </label>
             <select
-              value={selectedAllocation}
-              onChange={(e) => setSelectedAllocation(e.target.value)}
+              value={selectedAllocationId}
+              onChange={(e) => setSelectedAllocationId(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl px-3 py-2 font-medium focus:outline-none focus:border-emerald-500"
             >
-              <option value="Physics — SS 2 Science (Gold)">Physics — SS 2 Science (Gold)</option>
-              <option value="Physics — SS 3 Science (Diamond)">Physics — SS 3 Science (Diamond)</option>
-              <option value="Further Mathematics — SS 2 Science (Gold)">Further Mathematics — SS 2 Science (Gold)</option>
-              <option value="Basic Science & Technology — JSS 2 (Silver)">Basic Science & Technology — JSS 2 (Silver)</option>
+              {allocations.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>

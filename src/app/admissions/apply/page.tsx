@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -24,7 +24,10 @@ import {
   Sparkles,
   HelpCircle,
   Printer,
-  Loader2
+  Loader2,
+  XCircle,
+  Lock,
+  BookOpen
 } from 'lucide-react';
 
 export default function AdmissionsApplyPage() {
@@ -32,6 +35,42 @@ export default function AdmissionsApplyPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingReport, setUploadingReport] = useState(false);
+  const [gateConfig, setGateConfig] = useState<{
+    loaded: boolean;
+    isOpen: boolean;
+    targetSession: string;
+    announcementNotice?: string;
+    closedNotice?: string;
+  }>({
+    loaded: false,
+    isOpen: true,
+    targetSession: '2026/2027 Academic Session',
+    announcementNotice: '',
+    closedNotice: 'Online admissions for the current academic cycle are currently closed. All entrance screening tests have concluded. For transfer inquiries, kindly contact the Principal’s Office directly.',
+  });
+
+  useEffect(() => {
+    async function checkGate() {
+      try {
+        const res = await fetch('/api/cms/admissions-gate');
+        const data = await res.json();
+        if (data?.success && data.config) {
+          setGateConfig({
+            loaded: true,
+            isOpen: typeof data.config.isOpen === 'boolean' ? data.config.isOpen : true,
+            targetSession: data.config.targetSession || '2026/2027 Academic Session',
+            announcementNotice: data.config.announcementNotice,
+            closedNotice: data.config.closedNotice,
+          });
+        } else {
+          setGateConfig((prev) => ({ ...prev, loaded: true }));
+        }
+      } catch (e) {
+        setGateConfig((prev) => ({ ...prev, loaded: true }));
+      }
+    }
+    checkGate();
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -301,12 +340,21 @@ export default function AdmissionsApplyPage() {
       {/* Header Banner */}
       <section className="bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 text-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center space-y-3">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider border border-emerald-400/30">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>2026/2027 Academic Session</span>
-          </span>
+          {gateConfig.loaded && !gateConfig.isOpen ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-bold uppercase tracking-wider border border-rose-400/30">
+              <XCircle className="w-3.5 h-3.5 text-rose-400" />
+              <span>Admissions Closed • {gateConfig.targetSession}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider border border-emerald-400/30">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{gateConfig.targetSession}</span>
+            </span>
+          )}
           <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
-            Online Student Admission Application
+            {gateConfig.loaded && !gateConfig.isOpen
+              ? 'Online Student Admissions Portal'
+              : 'Online Student Admission Application'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-200 max-w-2xl mx-auto leading-relaxed">
             MSSN Islamic Model Schools, Akure • Crèche, Nursery, Primary, Secondary &amp; Special Hifzul Qur’an Class
@@ -316,7 +364,81 @@ export default function AdmissionsApplyPage() {
 
       {/* Main Container */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 w-full flex-1">
-        {submittedData ? (
+        {gateConfig.loaded && !gateConfig.isOpen ? (
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden p-6 sm:p-12 text-center max-w-2xl mx-auto space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+              <Lock className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-bold uppercase tracking-wider">
+                <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                Portal Closed • {gateConfig.targetSession}
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Online Admissions Are Closed
+              </h2>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-rose-50/70 border border-rose-200/80 text-rose-950 text-xs sm:text-sm text-left leading-relaxed space-y-2">
+              <div className="font-bold flex items-center gap-2 text-rose-900">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                Official Registry Notification
+              </div>
+              <p className="text-slate-700">
+                {gateConfig.closedNotice || 'Online admissions for the current academic cycle are currently closed. All entrance screening tests have concluded. For transfer inquiries, kindly contact the Principal’s Office directly.'}
+              </p>
+            </div>
+
+            {/* School Contact Card */}
+            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-3">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                Direct Inquiries &amp; Student Transfers
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Parents seeking in-person entrance screening, mid-session student transfers, or special Hifzul Qur’an boarding admissions should contact the school registry:
+              </p>
+              <div className="space-y-2 text-xs font-semibold text-slate-800 pt-1">
+                <div className="flex items-center gap-2.5">
+                  <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <a href="tel:+2348033581947" className="hover:text-emerald-700 hover:underline">
+                    +234 803 358 1947 / +234 803 560 3077
+                  </a>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <a href="mailto:admissions@mimsakure.com" className="hover:text-emerald-700 hover:underline">
+                    admissions@mimsakure.com
+                  </a>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    MSSN Campus Complex, Madinah Quarters, Ilere Road, Akure, Ondo State.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/admissions"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm transition shadow-sm flex items-center justify-center gap-2"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>Explore Curricula &amp; Programs</span>
+              </Link>
+              <Link
+                href="/"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2"
+              >
+                <span>Return to Homepage</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        ) : submittedData ? (
           /* Confirmation View & Dedicated Single-Sheet Printable Slip */
           <div>
             {/* Print CSS Styles to enforce single-page A4 print */}

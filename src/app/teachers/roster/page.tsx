@@ -27,24 +27,51 @@ interface StudentRosterItem {
 }
 
 export default function TeacherRosterPage() {
-  const [selectedAllocation, setSelectedAllocation] = useState('Further Mathematics — SS 2 Science (Gold)');
+  const [allocations, setAllocations] = useState<any[]>([]);
+  const [selectedAllocationId, setSelectedAllocationId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [students, setStudents] = useState<StudentRosterItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  const allocations = [
-    { label: 'Further Mathematics — SS 2 Science (Gold)', type: 'Elective' },
-    { label: 'Physics — SS 2 Science (Gold)', type: 'Core' },
-    { label: 'Physics — SS 3 Science (Diamond)', type: 'Core' },
-    { label: 'Basic Science & Technology — JSS 2 (Silver)', type: 'Core' },
-  ];
+  useEffect(() => {
+    async function loadAllocations() {
+      try {
+        const res = await fetch('/api/teachers/allocations');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.allocations) && data.allocations.length > 0) {
+          const mapped = data.allocations.map((a: any) => ({
+            id: a.id,
+            classId: a.class_id,
+            label: `${a.subject_name} — ${a.classes?.class_name || ''} ${a.classes?.section ? '(' + a.classes.section + ')' : ''}`.trim(),
+            type: a.classes?.wing || 'Core',
+          }));
+          setAllocations(mapped);
+          setSelectedAllocationId(mapped[0].id);
+        } else {
+          setAllocations([
+            { id: 'def-1', classId: '22222222-2222-2222-2222-222222222206', label: 'Physics — SSS 2 Science (Gold)', type: 'Core' }
+          ]);
+          setSelectedAllocationId('def-1');
+        }
+      } catch (err) {
+        console.error('Failed to load allocations:', err);
+      }
+    }
+    loadAllocations();
+  }, []);
+
+  const currentAllocation = allocations.find((a) => a.id === selectedAllocationId) || allocations[0];
 
   useEffect(() => {
     async function loadStudents() {
+      if (!currentAllocation) return;
       setLoading(true);
       try {
-        const res = await fetch('/api/admin/students');
+        const url = currentAllocation.classId
+          ? `/api/teachers/students?classId=${currentAllocation.classId}`
+          : '/api/admin/students';
+        const res = await fetch(url);
         const data = await res.json();
         if (data.success && data.students) {
           setStudents(
@@ -54,7 +81,7 @@ export default function TeacherRosterPage() {
               name: `${s.firstname || ''} ${s.lastname || ''}`.trim() || 'Student',
               gender: (s.gender === 'Female' ? 'Female' : 'Male') as 'Male' | 'Female',
               isEnrolled: true,
-              className: s.classes?.class_name || 'SS 2 Science',
+              className: s.classes?.class_name || 'Class',
             }))
           );
         }
@@ -65,7 +92,7 @@ export default function TeacherRosterPage() {
       }
     }
     loadStudents();
-  }, []);
+  }, [selectedAllocationId]);
 
   const toggleStudentEnrollment = (id: string) => {
     setStudents((prev) =>
@@ -133,12 +160,12 @@ export default function TeacherRosterPage() {
               Select Assigned Teaching Subject & Arm
             </label>
             <select
-              value={selectedAllocation}
-              onChange={(e) => setSelectedAllocation(e.target.value)}
+              value={selectedAllocationId}
+              onChange={(e) => setSelectedAllocationId(e.target.value)}
               className="w-full bg-[#0D1527] border border-[#213357] text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-emerald-500"
             >
-              {allocations.map((a, idx) => (
-                <option key={idx} value={a.label}>
+              {allocations.map((a) => (
+                <option key={a.id} value={a.id}>
                   {a.label} ({a.type})
                 </option>
               ))}

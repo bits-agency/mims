@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -35,6 +35,27 @@ export default function BursarPortalLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.authenticated && data?.user) {
+          setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const displayName = currentUser?.fullName || currentUser?.username || 'School Bursar';
+  const initials = displayName
+    .split(' ')
+    .filter(Boolean)
+    .map((p: string) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'BS';
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -46,7 +67,7 @@ export default function BursarPortalLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#090E1A] text-slate-100 flex font-sans">
+    <div className="h-screen bg-[#090E1A] text-slate-100 flex font-sans overflow-hidden">
       {/* 1. Desktop Dark Navy Sidebar (Fixed to viewport) */}
       <aside className="fixed inset-y-0 left-0 w-64 bg-[#0D1527] text-slate-300 flex flex-col justify-between hidden lg:flex border-r border-[#1B2945] z-30 h-screen">
         <div className="flex-1 overflow-y-auto">
@@ -112,11 +133,11 @@ export default function BursarPortalLayout({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-black text-xs">
-                BS
+                {initials}
               </div>
-              <div>
-                <p className="text-xs font-bold text-white leading-tight">Alhaji R. Sanusi</p>
-                <p className="text-[10px] text-slate-400">Chief Bursar</p>
+              <div className="truncate max-w-[120px]">
+                <p className="text-xs font-bold text-white leading-tight truncate">{displayName}</p>
+                <p className="text-[10px] text-emerald-400 truncate">Chief Bursar</p>
               </div>
             </div>
             <button
@@ -153,7 +174,7 @@ export default function BursarPortalLayout({
                   />
                   <div>
                     <h2 className="font-extrabold text-xs text-white uppercase leading-tight">
-                      MSSN BURSARY
+                      MIMS BURSARY
                     </h2>
                     <p className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider">
                       Accounts Desk
@@ -197,11 +218,11 @@ export default function BursarPortalLayout({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-xs">
-                    BS
+                    {initials}
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-white leading-tight">Alhaji R. Sanusi</p>
-                    <p className="text-[10px] text-slate-400">Chief Bursar</p>
+                  <div className="truncate max-w-[120px]">
+                    <p className="text-xs font-bold text-white leading-tight truncate">{displayName}</p>
+                    <p className="text-[10px] text-emerald-400 truncate">Chief Bursar</p>
                   </div>
                 </div>
                 <button
@@ -218,9 +239,9 @@ export default function BursarPortalLayout({
       )}
 
       {/* 3. Main Content Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64 h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 sm:h-20 bg-[#0D1527]/90 backdrop-blur-md border-b border-[#1B2945] px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
+        <header className="sticky top-0 h-16 sm:h-20 bg-[#0D1527] border-b border-[#1B2945] px-4 sm:px-6 flex items-center justify-between shrink-0 z-20 shadow-md">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileMenuOpen(true)}
@@ -246,7 +267,7 @@ export default function BursarPortalLayout({
                 Official School Bursary Console
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-extrabold uppercase">
-                Jaiz Bank Live Sync
+                Official Accounts Sync
               </span>
             </div>
           </div>

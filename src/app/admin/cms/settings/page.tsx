@@ -79,9 +79,9 @@ const DEFAULT_SETTINGS: SiteSettings = {
   seniorCampusAddress: 'MSSN Campus Complex, KM 4 Oba-Ile Express Road, Akure, Ondo State',
   nurseryPrimaryAddress: 'Al-Birr Heights, Off Oba-Adesida Central Boulevard, Akure, Ondo State',
 
-  bankName: 'Jaiz Bank Plc',
+  bankName: 'Official Commercial Bank',
   accountName: 'MSSN Islamic Model Schools Akure - Operations',
-  accountNumber: '0012345678',
+  accountNumber: 'To Be Stated by School Management',
   sortCode: '301001',
 
   schoolHours: 'Monday - Thursday: 7:30 AM – 3:30 PM',

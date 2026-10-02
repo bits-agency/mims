@@ -17,13 +17,24 @@ import {
   QrCode,
   ShieldCheck,
   Sparkles,
-  Loader2
+  Loader2,
+  Key,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function StudentProfilePage() {
-  const [activeTab, setActiveTab] = useState<'biodata' | 'idcard'>('biodata');
+  const [activeTab, setActiveTab] = useState<'biodata' | 'idcard' | 'security'>('biodata');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Security & Password State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordStatus, setPasswordStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // Student Biodata State
   const [formData, setFormData] = useState({
@@ -95,6 +106,41 @@ export default function StudentProfilePage() {
     window.print();
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({ type: 'error', message: 'New passwords do not match. Please re-enter.' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordStatus({ type: 'error', message: 'Password must be at least 6 characters in length.' });
+      return;
+    }
+
+    setChangingPassword(true);
+    setPasswordStatus(null);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setPasswordStatus({ type: 'success', message: 'Password updated successfully! Keep your new password safe.' });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setPasswordStatus({ type: 'error', message: data.error || 'Failed to update password.' });
+      }
+    } catch {
+      setPasswordStatus({ type: 'error', message: 'Network error updating password.' });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6 max-w-5xl w-full mx-auto font-sans">
       {/* Header & Tabs */}
@@ -132,6 +178,18 @@ export default function StudentProfilePage() {
           >
             <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
             Generate ID Card
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('security')}
+            className={`px-4 py-2 rounded-lg transition flex items-center gap-1.5 ${
+              activeTab === 'security'
+                ? 'bg-white text-emerald-800 shadow-xs'
+                : 'hover:text-slate-900'
+            }`}
+          >
+            <Key className="w-3.5 h-3.5 text-emerald-600" />
+            Security &amp; Password
           </button>
         </div>
       </div>
@@ -366,109 +424,252 @@ export default function StudentProfilePage() {
                 </button>
               </div>
 
-              {/* ID Card Display Area (Printable) */}
+              {/* ID Card Display Area (Realistic White PVC Plastic ID Card) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start justify-center">
                 {/* FRONT OF ID CARD */}
-                <div className="w-full max-w-[420px] mx-auto bg-gradient-to-br from-slate-900 via-[#0B132B] to-emerald-950 text-white rounded-3xl p-6 shadow-2xl border-2 border-emerald-500/40 relative overflow-hidden flex flex-col justify-between h-[270px]">
-                  {/* Card Watermark pattern */}
-                  <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px] opacity-15 pointer-events-none" />
+                <div className="w-full max-w-[420px] mx-auto bg-white text-slate-900 rounded-2xl shadow-xl shadow-slate-300/70 border-2 border-emerald-600 relative overflow-hidden flex flex-col justify-between h-[270px]">
+                  {/* Top Green Institutional Ribbon Header */}
+                  <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-emerald-900 text-white px-4 py-2.5 flex items-center justify-between gap-3 border-b-2 border-emerald-500 shrink-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src="/images/logo.png"
+                        alt="MIMS Logo"
+                        className="w-10 h-10 object-contain rounded-lg bg-white p-0.5 shadow-sm shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <h4 className="font-black text-[11px] sm:text-xs uppercase tracking-tight text-white leading-tight truncate">
+                          MSSN ISLAMIC MODEL SCHOOLS
+                        </h4>
+                        <p className="text-[8px] uppercase font-bold text-emerald-200 tracking-wider">
+                          Akure, Ondo State • Knowledge is Light
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500 text-slate-950 text-[8px] font-black uppercase tracking-wider shrink-0 shadow-xs">
+                      STUDENT
+                    </span>
+                  </div>
 
-                  {/* Card Header */}
-                  <div className="relative z-10 flex items-center gap-3 border-b border-white/10 pb-3">
-                    <img
-                      src="/images/logo.png"
-                      alt="MIMS Logo"
-                      className="w-12 h-12 object-contain rounded-xl bg-white p-0.5 shadow shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-black text-xs uppercase tracking-tight text-white leading-tight truncate">
-                        MSSN ISLAMIC MODEL SCHOOLS
-                      </h4>
-                      <p className="text-[9px] uppercase font-bold text-emerald-400 tracking-wider">
-                        Akure, Ondo State • Knowledge is Light
-                      </p>
-                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded-md bg-emerald-500 text-slate-950 text-[8px] font-black uppercase tracking-wider">
-                        STUDENT IDENTITY CARD
-                      </span>
+                  {/* Card Main Body on Pure White PVC */}
+                  <div className="p-3.5 flex items-center gap-3.5 flex-1 min-w-0">
+                    {/* Student Photo Passport with Green Border */}
+                    <div className="relative shrink-0">
+                      <img
+                        src={formData.photoUrl}
+                        alt="Student Photo"
+                        className="w-20 h-24 rounded-xl object-contain bg-slate-100 border-2 border-emerald-600 p-0.5 shadow-sm"
+                      />
+                      <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[8px] font-bold shadow-xs">
+                        ✓
+                      </div>
+                    </div>
+
+                    {/* Student Details */}
+                    <div className="text-xs space-y-1 min-w-0 flex-1">
+                      <div>
+                        <span className="text-[8px] uppercase font-extrabold tracking-wider text-slate-400 block">
+                          Full Name
+                        </span>
+                        <h3 className="font-black text-sm text-slate-950 uppercase leading-tight truncate">
+                          {formData.fullName || 'Student Name'}
+                        </h3>
+                      </div>
+
+                      <div>
+                        <span className="text-[8px] uppercase font-extrabold tracking-wider text-slate-400 block">
+                          Admission Number
+                        </span>
+                        <span className="font-mono font-black text-xs text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                          {formData.admissionNo || 'MIMS/---'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-0.5">
+                        <div>
+                          <span className="text-[8px] uppercase font-extrabold tracking-wider text-slate-400 block">
+                            Class Arm
+                          </span>
+                          <span className="font-extrabold text-[11px] text-slate-800 truncate block">
+                            {formData.className || 'Senior Secondary'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[8px] uppercase font-extrabold tracking-wider text-slate-400 block">
+                            Sex / Blood
+                          </span>
+                          <span className="font-bold text-[11px] text-slate-700">
+                            {formData.gender} • {formData.bloodGroup}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Smart QR / Barcode Scan Graphic */}
+                    <div className="hidden sm:flex flex-col items-center justify-center p-1.5 rounded-lg bg-emerald-50/80 border border-emerald-200 shrink-0">
+                      <QrCode className="w-10 h-10 text-emerald-800" />
+                      <span className="text-[7px] font-mono font-bold text-emerald-800 mt-0.5">VERIFIED</span>
                     </div>
                   </div>
 
-                  {/* Card Body */}
-                  <div className="relative z-10 flex items-center gap-4 my-2">
-                    <img
-                      src={formData.photoUrl}
-                      alt="Student Photo"
-                      className="w-20 h-24 rounded-2xl object-contain bg-slate-900/60 border border-emerald-400/40 p-1.5 shadow-md shrink-0"
-                    />
-                    <div className="text-xs space-y-0.5 min-w-0 flex-1">
-                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Name</span>
-                      <h3 className="font-black text-sm text-white uppercase leading-tight truncate">
-                        {formData.fullName || 'Student Name'}
-                      </h3>
-                      <div className="pt-1 flex items-center gap-2">
-                        <span className="text-[9px] uppercase font-bold text-slate-400">Admission No:</span>
-                        <strong className="text-emerald-400 font-mono text-xs">{formData.admissionNo || 'MIMS/---'}</strong>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] uppercase font-bold text-slate-400">Class:</span>
-                        <strong className="text-white text-xs">{formData.className || 'General'}</strong>
-                      </div>
-                      <div className="flex items-center gap-3 pt-0.5 text-[10px] text-slate-300">
-                        <span>Blood: <strong className="text-white">{formData.bloodGroup}</strong></span>
-                        <span>•</span>
-                        <span>Sex: <strong className="text-white">{formData.gender}</strong></span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card Footer */}
-                  <div className="relative z-10 pt-2 border-t border-white/10 flex items-center justify-between text-[9px] text-slate-400">
-                    <span>Issued: {formData.issueDate}</span>
-                    <span className="font-mono text-emerald-400">Valid Till: {formData.expiryDate}</span>
-                    <span className="font-bold text-white">MIMS/SEC</span>
+                  {/* Card Bottom Stripe */}
+                  <div className="bg-slate-50 border-t border-emerald-200 px-4 py-1.5 flex items-center justify-between text-[8px] text-slate-600 font-semibold shrink-0">
+                    <span>Session: <strong className="text-slate-900">2025/2026</strong></span>
+                    <span>Valid: <strong className="text-emerald-800">{formData.expiryDate}</strong></span>
+                    <span className="font-bold text-emerald-900 uppercase">MIMS AKURE CAMPUS</span>
                   </div>
                 </div>
 
                 {/* BACK OF ID CARD */}
-                <div className="w-full max-w-[420px] mx-auto bg-white text-slate-900 rounded-3xl p-6 shadow-2xl border-2 border-slate-300 relative overflow-hidden flex flex-col justify-between h-[270px] text-xs">
-                  <div>
-                    <div className="text-center pb-2 border-b border-slate-200 mb-3">
-                      <p className="font-extrabold text-[11px] text-slate-900 uppercase">
-                        MSSN ISLAMIC MODEL SCHOOLS &amp; COLLEGE
+                <div className="w-full max-w-[420px] mx-auto bg-white text-slate-900 rounded-2xl shadow-xl shadow-slate-300/70 border-2 border-emerald-600 relative overflow-hidden flex flex-col justify-between h-[270px] text-xs">
+                  {/* Top Green Accent Header */}
+                  <div className="bg-emerald-800 text-white px-4 py-1.5 text-center font-black text-[9px] uppercase tracking-wider shrink-0">
+                    Official Student Identity Card • Rules &amp; Recovery
+                  </div>
+
+                  <div className="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
+                    <div className="space-y-1.5 text-[9px] text-slate-700 leading-relaxed">
+                      <p className="flex items-start gap-1">
+                        <span className="text-emerald-700 font-bold shrink-0">•</span>
+                        <span>This smart card remains official property of <strong>MSSN Islamic Model Schools Akure</strong>.</span>
                       </p>
-                      <p className="text-[9px] text-emerald-700 font-bold">
-                        Medina Community, Ilere/Ijare Road, Akure, Ondo State
+                      <p className="flex items-start gap-1">
+                        <span className="text-emerald-700 font-bold shrink-0">•</span>
+                        <span>Must be presented upon request during examinations, campus entry, and co-curricular events.</span>
+                      </p>
+                      <p className="flex items-start gap-1">
+                        <span className="text-emerald-700 font-bold shrink-0">•</span>
+                        <span>If found, please return to any MIMS Campus or the nearest security post/police station.</span>
                       </p>
                     </div>
 
-                    <div className="space-y-1.5 text-[10px] text-slate-600 leading-snug">
-                      <p>• This smart identity card is official property of MSSN Islamic Model Schools Akure.</p>
-                      <p>• Must be presented upon request by school proctors and examination invigilators.</p>
-                      <p>• If lost and found, please return to the school administration office or nearest police station.</p>
-                    </div>
-
-                    {/* Emergency Contact */}
-                    <div className="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Emergency Guardian Contact</span>
+                    {/* Emergency Contact Box in Soft Green Tint */}
+                    <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-[10px]">
+                      <span className="text-[8px] uppercase font-extrabold text-emerald-800 block">
+                        Guardian Emergency Contact
+                      </span>
                       <p className="font-bold text-slate-900 text-xs">
-                        {formData.guardianName || 'School Bursary / Admin'} {formData.guardianPhone ? `(${formData.guardianPhone})` : ''}
+                        {formData.guardianName || 'Parent / Guardian'} {formData.guardianPhone ? `(${formData.guardianPhone})` : ''}
                       </p>
-                      <p className="text-[9px] text-slate-500">School Hotlines: 08036268724, 08146034137</p>
+                      <p className="text-[8px] text-slate-500 mt-0.5">
+                        School Administrative Lines: 0803 358 1947 • 0803 626 8724
+                      </p>
+                    </div>
+
+                    {/* Barcode & Principal's Authorization Seal */}
+                    <div className="pt-1.5 border-t border-slate-200 flex items-center justify-between">
+                      <div>
+                        <div className="font-mono text-[9px] tracking-widest text-slate-600 font-black">
+                          ||||| ||| |||| || ||||||| | |||
+                        </div>
+                        <span className="text-[7px] font-mono text-slate-400">SERIAL: {formData.admissionNo || 'MIMS-PVC-0042'}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="block text-[7px] text-slate-400 uppercase font-bold">Authorized Signatory</span>
+                        <span className="font-serif italic font-bold text-[11px] text-emerald-800">[ School Seal &amp; Principal ]</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Barcode & Signature */}
-                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
-                    <div className="font-mono text-[9px] tracking-widest text-slate-400 font-bold">
-                      ||||| | |||| ||| ||||||| | |||
-                    </div>
-                    <div className="text-right">
-                      <span className="block text-[8px] text-slate-400 uppercase">Authorized Principal</span>
-                      <span className="font-serif italic font-bold text-xs text-slate-800">[ School Seal ]</span>
-                    </div>
-                  </div>
+                  {/* Bottom Thin Green Accent */}
+                  <div className="h-1.5 bg-emerald-700 w-full shrink-0" />
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 3: SECURITY & PASSWORD UPDATE */}
+          {activeTab === 'security' && (
+            <div className="max-w-xl mx-auto bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                  <Key className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Account Security &amp; Password</h2>
+                  <p className="text-xs text-slate-500">Update your student portal login credentials</p>
+                </div>
+              </div>
+
+              {passwordStatus && (
+                <div
+                  className={`p-4 rounded-2xl text-xs font-semibold flex items-center gap-2.5 ${
+                    passwordStatus.type === 'success'
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                  }`}
+                >
+                  {passwordStatus.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  )}
+                  <span>{passwordStatus.message}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Current / Initial Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter current password (e.g. Mimsakure27)"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-emerald-600 transition"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">If this is your first time logging in, your default password was provided by the school.</p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    New Password <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      placeholder="At least 6 characters"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-emerald-600 transition pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Confirm New Password <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Repeat new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-emerald-600 transition"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={changingPassword}
+                    className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                    <span>Update Security Password</span>
+                  </button>
+                </div>
+              </form>
             </div>
           )}
         </>

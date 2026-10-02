@@ -28,40 +28,84 @@ interface StudentAttendanceRow {
 }
 
 export default function TeacherAttendancePage() {
-  const [selectedAllocation, setSelectedAllocation] = useState('Physics — SS 2 Science (Gold)');
-  const [date, setDate] = useState('2026-10-01');
+  const [allocations, setAllocations] = useState<any[]>([]);
+  const [selectedAllocationId, setSelectedAllocationId] = useState<string>('');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [students, setStudents] = useState<StudentAttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    async function loadStudents() {
+    async function loadAllocations() {
+      try {
+        const res = await fetch('/api/teachers/allocations');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.allocations) && data.allocations.length > 0) {
+          const mapped = data.allocations.map((a: any) => ({
+            id: a.id,
+            classId: a.class_id,
+            label: `${a.subject_name} — ${a.classes?.class_name || ''} ${a.classes?.section ? '(' + a.classes.section + ')' : ''}`.trim(),
+            subjectName: a.subject_name,
+            className: a.classes?.class_name || '',
+          }));
+          setAllocations(mapped);
+          setSelectedAllocationId(mapped[0].id);
+        } else {
+          setAllocations([
+            { id: '55555555-5555-5555-5555-555555555503', classId: '22222222-2222-2222-2222-222222222206', label: 'Physics — SSS 2 Science (Gold)' }
+          ]);
+          setSelectedAllocationId('55555555-5555-5555-5555-555555555503');
+        }
+      } catch (err) {
+        console.error('Failed to load allocations:', err);
+      }
+    }
+    loadAllocations();
+  }, []);
+
+  const currentAllocation = allocations.find((a) => a.id === selectedAllocationId) || allocations[0];
+
+  useEffect(() => {
+    async function loadAttendanceData() {
+      if (!currentAllocation) return;
       setLoading(true);
       try {
-        const res = await fetch('/api/admin/students');
-        const data = await res.json();
-        if (data.success && data.students) {
+        const [studRes, attRes] = await Promise.all([
+          fetch(`/api/teachers/students?classId=${currentAllocation.classId || ''}`).then((r) => r.json()).catch(() => null),
+          fetch(`/api/teachers/attendance?classId=${currentAllocation.classId || ''}&subjectId=${currentAllocation.id || ''}&date=${date}`).then((r) => r.json()).catch(() => null),
+        ]);
+
+        const attMap: Record<string, any> = {};
+        if (attRes?.records) {
+          attRes.records.forEach((rec: any) => {
+            attMap[rec.student_id] = rec;
+          });
+        }
+
+        if (studRes?.success && studRes.students) {
           setStudents(
-            data.students.map((s: any) => ({
+            studRes.students.map((s: any) => ({
               id: s.id,
               admissionNo: s.admission_no || 'MIMS/2026/0000',
               name: `${s.firstname || ''} ${s.lastname || ''}`.trim() || 'Student',
               totalHeld: 0,
               totalAttended: 0,
-              status: 'present' as const,
-              remark: '',
+              status: (attMap[s.id]?.status as 'present' | 'absent' | 'late') || ('present' as const),
+              remark: attMap[s.id]?.remark || '',
             }))
           );
         }
       } catch (err) {
-        console.error('Failed to load students for attendance:', err);
+        console.error('Failed to load attendance:', err);
       } finally {
         setLoading(false);
       }
     }
-    loadStudents();
-  }, []);
+    loadAttendanceData();
+  }, [selectedAllocationId, date]);
 
   const handleStatusChange = (id: string, newStatus: 'present' | 'absent' | 'late') => {
     setStudents((prev) =>
@@ -79,9 +123,42 @@ export default function TeacherAttendancePage() {
     setStudents((prev) => prev.map((s) => ({ ...s, status: 'present' })));
   };
 
-  const handleSubmit = () => {
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 3500);
+  const handleSubmit = async () => {
+    if (!currentAllocation || students.length === 0) return;
+    setSaving(true);
+    try {
+      const records = students.map((s) => ({
+        studentId: s.id,
+        status: s.status,
+        remark: s.remark,
+      }));
+
+      const res = await fetch('/api/teachers/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attendanceRecords: records,
+          classId: currentAllocation.classId,
+          subjectId: currentAllocation.id,
+          date,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSubmitted(true);
+        setSubmitMessage(data.message || 'Daily roll call synchronized to database.');
+      } else {
+        setSubmitMessage(data.error || 'Failed to save attendance.');
+      }
+    } catch (err: any) {
+      setSubmitMessage(err?.message || 'Network error saving attendance.');
+    } finally {
+      setSaving(false);
+      setTimeout(() => {
+        setSubmitted(false);
+        setSubmitMessage(null);
+      }, 4000);
+    }
   };
 
   const presentCount = students.filter((s) => s.status === 'present').length;
@@ -140,14 +217,15 @@ export default function TeacherAttendancePage() {
               Teaching Allocation
             </label>
             <select
-              value={selectedAllocation}
-              onChange={(e) => setSelectedAllocation(e.target.value)}
+              value={selectedAllocationId}
+              onChange={(e) => setSelectedAllocationId(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-xl px-3 py-2 font-medium focus:outline-none focus:border-emerald-500"
             >
-              <option value="Physics — SS 2 Science (Gold)">Physics — SS 2 Science (Gold)</option>
-              <option value="Physics — SS 3 Science (Diamond)">Physics — SS 3 Science (Diamond)</option>
-              <option value="Further Mathematics — SS 2 Science (Gold)">Further Mathematics — SS 2 Science (Gold)</option>
-              <option value="Basic Science & Technology — JSS 2 (Silver)">Basic Science & Technology — JSS 2 (Silver)</option>
+              {allocations.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label}
+                </option>
+              ))}
             </select>
           </div>
 

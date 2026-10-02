@@ -1,0 +1,32 @@
+[
+  {
+    "id": "anc-1790932078498",
+    "title": "First Term Mid-Term Break & Assessment Notice",
+    "sender": "Governing Board / Super Administrator",
+    "date": "2026-10-02",
+    "category": "Academic",
+    "message": "The school will observe mid-term break starting next Friday. All students are required to complete take-home assignments.",
+    "pinned": true,
+    "audience": "students"
+  },
+  {
+    "id": "anc-1",
+    "title": "Resumption Protocol & Term 1 Orientation",
+    "sender": "Office of the Principal",
+    "date": "2026-10-01",
+    "category": "Academic",
+    "message": "All students are expected to report to their assigned class arms promptly at 7:30 AM in complete, neat school uniforms. Morning assembly and orientation will commence at 7:45 AM.",
+    "pinned": true,
+    "audience": "students"
+  },
+  {
+    "id": "anc-2",
+    "title": "Weekly Tahfeez & Holy Quran Memorization Review",
+    "sender": "Tahfeez & Spiritual Affairs Unit",
+    "date": "2026-10-02",
+    "category": "Spiritual",
+    "message": "The weekly Quranic recitation and memorization assessment for all grades will hold on Thursday mornings before first period. Ensure daily revision of your assigned Surah.",
+    "pinned": false,
+    "audience": "students"
+  }
+]

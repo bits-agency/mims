@@ -158,7 +158,7 @@ export default function StudentResultsPage() {
                 href="/students/fees"
                 className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow transition flex items-center gap-2"
               >
-                View Jaiz Bank Account &amp; Validate Teller <ArrowRight className="w-4 h-4" />
+                View Official Payment Account &amp; Validate Teller <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>

@@ -102,7 +102,7 @@ export default function ContactPage() {
     },
     {
       q: 'What are the bank payment details for tuition and registration fees?',
-      a: 'All official tuition payments must be remitted directly to the school’s designated accounts (Jaiz Bank / Lotus Bank) in favor of "MSSN Islamic Model Schools" or "Al-Birr Islamic Model College". Cash payments to individuals are strictly prohibited.',
+      a: 'All official tuition payments must be remitted directly to the school’s designated official accounts (separate accounts for Nursery & Primary and Secondary wings) in favor of "MSSN Islamic Model Schools". Cash payments to individuals are strictly prohibited.',
     },
   ];
 

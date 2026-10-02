@@ -70,7 +70,7 @@ function LoginFormContent() {
           School Portal Sign In
         </h1>
         <p className="text-xs text-slate-500 mt-1">
-          Enter your matriculation number, staff ID, or email to access your account.
+          Enter your Admission Number, Staff ID, or official email to access your portal.
         </p>
       </div>
 
@@ -86,7 +86,7 @@ function LoginFormContent() {
       <form onSubmit={handleSignIn} className="space-y-4">
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-1">
-            Matric No / Staff ID / Email
+            Admission Number / Staff ID / Email
           </label>
           <div className="relative">
             <User className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />

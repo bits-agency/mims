@@ -23,6 +23,7 @@ export async function GET(request: Request) {
             classes (id, class_name, section),
             student_fee_clearance (is_cleared, balance, total_billed, total_paid)
           `)
+          .not('class_id', 'is', null)
           .order('admission_no', { ascending: true });
 
         if (!error && students) {

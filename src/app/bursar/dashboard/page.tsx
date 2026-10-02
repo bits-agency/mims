@@ -247,24 +247,30 @@ export default function BursarDashboardPage() {
 
             <div className="space-y-3">
               <div className="p-3 rounded-xl bg-[#0D1527] border border-[#203258]">
-                <span className="text-[10px] text-slate-400 font-bold uppercase block">Bank Name</span>
-                <span className="text-xs font-bold text-white mt-0.5 block">Jaiz Bank Plc</span>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] text-blue-400 font-bold uppercase">Nursery &amp; Primary Wing</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono">PRI</span>
+                </div>
+                <span className="text-xs font-bold text-white block">MSSN Islamic Model Primary School</span>
+                <span className="text-[11px] font-mono text-emerald-400 font-bold mt-0.5 block">Official Commercial Bank</span>
               </div>
 
               <div className="p-3 rounded-xl bg-[#0D1527] border border-[#203258]">
-                <span className="text-[10px] text-slate-400 font-bold uppercase block">Account Name</span>
-                <span className="text-xs font-bold text-white mt-0.5 block">MSSN Islamic Model Schools Akure</span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-[#0D1527] border border-[#203258]">
-                <span className="text-[10px] text-slate-400 font-bold uppercase block">Account Number</span>
-                <span className="text-sm font-mono font-bold text-emerald-400 mt-0.5 block">0012345678</span>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[10px] text-emerald-400 font-bold uppercase">Secondary College Wing</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">SEC</span>
+                </div>
+                <span className="text-xs font-bold text-white block">MSSN Islamic Model College - Secondary</span>
+                <span className="text-[11px] font-mono text-emerald-400 font-bold mt-0.5 block">Official Commercial Bank</span>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[#1E2E50] text-[10px] text-slate-400">
-            NIP instant settlement auto-credits student fee ledger upon receipt verification.
+          <div className="mt-4 pt-3 border-t border-[#1E2E50] flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Board-locked operational accounts</span>
+            <Link href="/bursar/fee-structures" className="text-emerald-400 hover:underline font-bold flex items-center gap-1">
+              View Tariffs <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
         </div>
       </div>

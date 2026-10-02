@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MessageSquare,
   Bell,
   Calendar,
   Pin,
   CheckCircle2,
-  Inbox
+  Inbox,
+  Loader2
 } from 'lucide-react';
 
 interface Notice {
@@ -22,8 +23,29 @@ interface Notice {
 
 export default function StudentMessagesPage() {
   const [notices, setNotices] = useState<Notice[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
+
+  useEffect(() => {
+    async function loadNotices() {
+      try {
+        const res = await fetch('/api/announcements?audience=students');
+        const data = await res.json();
+        if (data?.success && data.announcements) {
+          setNotices(data.announcements);
+          if (data.announcements.length > 0) {
+            setSelectedNotice(data.announcements[0]);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching broadcasts:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadNotices();
+  }, []);
 
   const filteredNotices = notices.filter(
     (n) => activeCategory === 'all' || n.category === activeCategory
@@ -60,7 +82,12 @@ export default function StudentMessagesPage() {
       </div>
 
       {/* Main Content Area */}
-      {filteredNotices.length === 0 ? (
+      {loading ? (
+        <div className="bg-white border border-slate-200 rounded-3xl p-16 text-center shadow-xs space-y-3">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto text-emerald-600" />
+          <p className="text-xs text-slate-500 font-semibold">Loading student broadcasts &amp; circulars...</p>
+        </div>
+      ) : filteredNotices.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center shadow-xs">
           <div className="w-16 h-16 rounded-3xl bg-slate-50 border border-slate-200 text-slate-400 flex items-center justify-center mx-auto mb-4">
             <Inbox className="w-8 h-8" />

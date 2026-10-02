@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Globe,
@@ -16,7 +16,8 @@ import {
   Eye,
   Sliders,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react';
 
 interface AdmissionsGateConfig {
@@ -54,16 +55,61 @@ const DEFAULT_CONFIG: AdmissionsGateConfig = {
 export default function AdminCmsAdmissionsGatePage() {
   const [config, setConfig] = useState<AdmissionsGateConfig>(DEFAULT_CONFIG);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'controller' | 'preview'>('controller');
+
+  useEffect(() => {
+    async function loadGateConfig() {
+      try {
+        const res = await fetch('/api/cms/admissions-gate');
+        const data = await res.json();
+        if (data?.success && data.config) {
+          setConfig((prev) => ({
+            ...prev,
+            isOpen: typeof data.config.isOpen === 'boolean' ? data.config.isOpen : prev.isOpen,
+            targetSession: data.config.targetSession || prev.targetSession,
+            applicationDeadline: data.config.applicationDeadline || prev.applicationDeadline,
+            entranceExamDate: data.config.entranceExamDate || prev.entranceExamDate,
+            entranceExamTime: data.config.entranceExamTime || prev.entranceExamTime,
+            examVenue: data.config.examVenue || prev.examVenue,
+            dayFormFee: data.config.dayFormFee ?? prev.dayFormFee,
+            boardingFormFee: data.config.boardingFormFee ?? prev.boardingFormFee,
+            announcementNotice: data.config.announcementNotice || prev.announcementNotice,
+            closedNotice: data.config.closedNotice || prev.closedNotice,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to load admissions gate config:', err);
+      }
+    }
+    loadGateConfig();
+  }, []);
 
   const handleToggle = () => {
     setConfig((prev) => ({ ...prev, isOpen: !prev.isOpen }));
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 4500);
+    setSaving(true);
+    try {
+      const res = await fetch('/api/cms/admissions-gate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+
+      if (res.ok) {
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 4500);
+      } else {
+        alert('Failed to save gate configuration to database.');
+      }
+    } catch {
+      alert('Network error saving gate configuration.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -345,10 +391,11 @@ export default function AdminCmsAdmissionsGatePage() {
             </span>
             <button
               type="submit"
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/40 transition border border-emerald-400/20"
+              disabled={saving}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/40 transition border border-emerald-400/20 disabled:opacity-50"
             >
-              <Save className="w-4 h-4" />
-              <span>Publish Gate Configuration</span>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>{saving ? 'Publishing...' : 'Publish Gate Configuration'}</span>
             </button>
           </div>
         </form>
@@ -404,7 +451,7 @@ export default function AdminCmsAdmissionsGatePage() {
                   <div className="text-sm font-black text-white">
                     Day: ₦{config.dayFormFee.toLocaleString()} • Boarding: ₦{config.boardingFormFee.toLocaleString()}
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-1">Payable online via Jaiz / Paystack</div>
+                  <div className="text-[11px] text-slate-400 mt-1">Payable via Official School Bank Channels</div>
                 </div>
               </div>
 

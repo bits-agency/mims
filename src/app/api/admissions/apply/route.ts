@@ -59,18 +59,32 @@ export async function POST(request: Request) {
       try {
         const supabase = getAdminClient();
 
-        // Check if email already registered
+        // 0. Verify admissions gate master switch
+        const { data: gate } = await supabase
+          .from('admissions_gate')
+          .select('is_open, closed_notice')
+          .limit(1)
+          .single();
+
+        if (gate && gate.is_open === false) {
+          return NextResponse.json(
+            { error: gate.closed_notice || 'Online admissions are currently closed for this academic cycle.' },
+            { status: 403 }
+          );
+        }
+
+        // Check if user with this exact email already exists
         const { data: existingUser } = await supabase
           .from('users')
-          .select('id')
+          .select('id, role')
           .eq('email', cleanEmail)
           .single();
 
+        // If parent already has an account or another child registered, assign a unique student portal email
+        let studentUserEmail = cleanEmail;
         if (existingUser) {
-          return NextResponse.json(
-            { error: 'An account with this email address already exists' },
-            { status: 409 }
-          );
+          const emailParts = cleanEmail.split('@');
+          studentUserEmail = `${emailParts[0]}+${tempRefSeq}@${emailParts[1]}`;
         }
 
         // 1. Create user in users table
@@ -78,8 +92,8 @@ export async function POST(request: Request) {
           .from('users')
           .insert({
             full_name: fullName,
-            username,
-            email: cleanEmail,
+            username: appRef.toLowerCase().replace(/[^a-z0-9]/g, ''),
+            email: studentUserEmail,
             password: hashedPassword,
             role: 'student',
             status: 'pending',
@@ -88,7 +102,7 @@ export async function POST(request: Request) {
           .single();
 
         if (userError || !newUser) {
-          throw new Error(userError?.message || 'Failed to create user record');
+          throw new Error(userError?.message || 'Failed to create student user record');
         }
 
         // 2. Create student record with application reference as initial admission_no

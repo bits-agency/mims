@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { hashPassword } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -62,7 +63,16 @@ export async function POST(request: Request) {
       qualification,
       assignedSubjects,
       assignedClassIds,
+      role: appointedRole,
+      password: customPassword,
     } = body;
+
+    const userRole =
+      appointedRole === 'Bursar'
+        ? 'bursar'
+        : appointedRole === 'Principal' || appointedRole === 'Vice Principal'
+        ? 'admin'
+        : 'teacher';
 
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -72,10 +82,14 @@ export async function POST(request: Request) {
 
         // 1. Create User account first if email provided
         let userId = null;
+        const rawPassword = customPassword?.trim() || 'Mimsakure27';
+        const hashedPassword = await hashPassword(rawPassword);
+
         if (email) {
           const { data: existingUser } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
           if (existingUser) {
             userId = existingUser.id;
+            await supabase.from('users').update({ role: userRole }).eq('id', existingUser.id);
           } else {
             const username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
             const { data: newUser } = await supabase
@@ -84,8 +98,8 @@ export async function POST(request: Request) {
                 full_name: `${firstname} ${lastname}`.trim(),
                 email: email,
                 username: username,
-                password: 'Password123', // default temporary password
-                role: 'teacher',
+                password: hashedPassword,
+                role: userRole,
                 status: 'active',
               })
               .select('id')
@@ -225,6 +239,21 @@ export async function PUT(request: Request) {
         .single();
 
       if (error) throw error;
+
+      if (updatedTeacher?.user_id && body.role) {
+        const userRole =
+          body.role === 'Bursar'
+            ? 'bursar'
+            : body.role === 'Principal' || body.role === 'Vice Principal'
+            ? 'admin'
+            : 'teacher';
+        await supabase.from('users').update({ role: userRole }).eq('id', updatedTeacher.user_id);
+      }
+
+      if (updatedTeacher?.user_id && body.password) {
+        const hashedPassword = await hashPassword(body.password.trim());
+        await supabase.from('users').update({ password: hashedPassword }).eq('id', updatedTeacher.user_id);
+      }
 
       const primaryCore = [
         'Mathematics',

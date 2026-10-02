@@ -53,7 +53,7 @@ export default function BursarDefaultersPage() {
     const admNo = item.students?.admission_no || '';
     const balance = Number(item.balance || 0).toLocaleString();
 
-    const notice = `Dear ${parentName}, this is a gentle reminder from MSSN Islamic Model Schools Akure Bursary. Your child, ${name} (${admNo}), has an outstanding balance of ₦${balance}.00. Please settle this balance to allow academic report card access. Bank: Jaiz Bank Plc | Acct: 0012345678. Jazakallahu Khairan.`;
+    const notice = `Dear ${parentName}, this is a gentle reminder from MSSN Islamic Model Schools Akure Bursary. Your child, ${name} (${admNo}), has an outstanding fee balance of ₦${balance}.00. Please settle this balance to allow academic report card access. Remit directly to the official school bank account with the student's admission number as narration. Jazakallahu Khairan.`;
 
     navigator.clipboard.writeText(notice);
     setCopiedId(item.id);

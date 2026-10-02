@@ -24,17 +24,41 @@ export async function POST(request: Request) {
     }
 
     const supabase = getAdminClient();
-    const cleanIdent = identifier.trim().toLowerCase();
+    const cleanIdent = identifier.trim();
 
-    // Search by username or email
-    const { data: user, error } = await supabase
+    // 1. Search by email or username in users table
+    let { data: user } = await supabase
       .from('users')
       .select('*')
       .or(`email.ilike.${cleanIdent},username.ilike.${cleanIdent}`)
-      .single();
+      .maybeSingle();
 
-    if (error || !user) {
-      return NextResponse.json({ error: 'Invalid username/email or password' }, { status: 401 });
+    // 2. If not found, check if identifier is a student Admission Number
+    if (!user) {
+      const { data: student } = await supabase
+        .from('students')
+        .select('user_id, admission_no')
+        .ilike('admission_no', cleanIdent)
+        .maybeSingle();
+
+      if (student?.user_id) {
+        const { data: userFromStudent } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', student.user_id)
+          .maybeSingle();
+
+        if (userFromStudent) {
+          user = userFromStudent;
+        }
+      }
+    }
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Invalid Admission Number, username/email or password' },
+        { status: 401 }
+      );
     }
 
     // Check active status

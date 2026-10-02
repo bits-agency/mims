@@ -41,16 +41,19 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({
-    authenticated: true,
-    user: {
-      userId: session.userId,
-      email: session.email,
-      role: session.role,
-      fullName: session.fullName,
-      username: session.username,
-      status: session.status,
-      profile: profileData,
-    },
-  });
+    const isSuperAdmin = session.email?.toLowerCase() === 'bamiebot@gmail.com' || session.role === 'super_admin';
+
+    return NextResponse.json({
+      authenticated: true,
+      user: {
+        userId: session.userId,
+        email: session.email,
+        role: session.role,
+        isSuperAdmin,
+        fullName: session.fullName,
+        username: session.username,
+        status: session.status,
+        profile: profileData,
+      },
+    });
 }
