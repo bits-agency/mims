@@ -16,8 +16,17 @@ import {
   AlertCircle,
   Building,
   RotateCcw,
-  Eye
+  Eye,
+  Plus,
+  Trash2
 } from 'lucide-react';
+
+export interface CampusLocation {
+  id: string;
+  title: string;
+  address: string;
+  type?: string;
+}
 
 interface SiteSettings {
   // Brand & Identity
@@ -40,6 +49,7 @@ interface SiteSettings {
   // Campuses
   seniorCampusAddress: string;
   nurseryPrimaryAddress: string;
+  campuses: CampusLocation[];
 
   // Banking Particulars
   bankName: string;
@@ -78,6 +88,26 @@ const DEFAULT_SETTINGS: SiteSettings = {
 
   seniorCampusAddress: 'MSSN Campus Complex, KM 4 Oba-Ile Express Road, Akure, Ondo State',
   nurseryPrimaryAddress: 'Al-Birr Heights, Off Oba-Adesida Central Boulevard, Akure, Ondo State',
+  campuses: [
+    {
+      id: 'senior',
+      title: 'Secondary School & Boarding Hostel Campus',
+      address: 'MSSN Campus Complex, KM 4 Oba-Ile Express Road, Akure, Ondo State',
+      type: 'Secondary & Boarding',
+    },
+    {
+      id: 'nursery_primary',
+      title: 'Nursery & Primary School Wing Campus',
+      address: 'Al-Birr Heights, Off Oba-Adesida Central Boulevard, Akure, Ondo State',
+      type: 'Nursery & Primary',
+    },
+    {
+      id: 'madinah',
+      title: 'Madinah Quranic & Tahfeez Residential Campus',
+      address: 'Madinah Estate, Off FUTA South Gate Road, Akure, Ondo State',
+      type: 'Tahfeez Academy',
+    },
+  ],
 
   bankName: 'Official Commercial Bank',
   accountName: 'MSSN Islamic Model Schools Akure - Operations',
@@ -106,6 +136,28 @@ export default function AdminCmsSettingsPage() {
       .then((data) => {
         if (data.settings) {
           const s = data.settings;
+          let loadedCampuses: CampusLocation[] = DEFAULT_SETTINGS.campuses;
+          if (Array.isArray(s.campus_locations) && s.campus_locations.length > 0) {
+            loadedCampuses = s.campus_locations;
+          } else if (Array.isArray(s.campuses) && s.campuses.length > 0) {
+            loadedCampuses = s.campuses;
+          } else if (s.senior_campus_address || s.nursery_primary_address) {
+            loadedCampuses = [
+              {
+                id: 'senior',
+                title: 'Secondary School & Boarding Hostel Campus',
+                address: s.senior_campus_address || DEFAULT_SETTINGS.seniorCampusAddress,
+                type: 'Secondary & Boarding',
+              },
+              {
+                id: 'nursery_primary',
+                title: 'Nursery & Primary School Wing Campus',
+                address: s.nursery_primary_address || DEFAULT_SETTINGS.nurseryPrimaryAddress,
+                type: 'Nursery & Primary',
+              },
+            ];
+          }
+
           setSettings({
             schoolName: s.school_name || DEFAULT_SETTINGS.schoolName,
             motto: s.motto || DEFAULT_SETTINGS.motto,
@@ -118,8 +170,9 @@ export default function AdminCmsSettingsPage() {
             admissionsEmail: s.admissions_email || DEFAULT_SETTINGS.admissionsEmail,
             bursarEmail: s.bursar_email || DEFAULT_SETTINGS.bursarEmail,
             principalEmail: s.principal_email || DEFAULT_SETTINGS.principalEmail,
-            seniorCampusAddress: s.senior_campus_address || DEFAULT_SETTINGS.seniorCampusAddress,
-            nurseryPrimaryAddress: s.nursery_primary_address || DEFAULT_SETTINGS.nurseryPrimaryAddress,
+            seniorCampusAddress: loadedCampuses[0]?.address || s.senior_campus_address || DEFAULT_SETTINGS.seniorCampusAddress,
+            nurseryPrimaryAddress: loadedCampuses[1]?.address || s.nursery_primary_address || DEFAULT_SETTINGS.nurseryPrimaryAddress,
+            campuses: loadedCampuses,
             bankName: s.bank_name || DEFAULT_SETTINGS.bankName,
             accountName: s.account_name || DEFAULT_SETTINGS.accountName,
             accountNumber: s.account_number || DEFAULT_SETTINGS.accountNumber,
@@ -141,6 +194,45 @@ export default function AdminCmsSettingsPage() {
     setSettings((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleAddCampus = () => {
+    const newCampus: CampusLocation = {
+      id: `campus-${Date.now()}`,
+      title: `Campus Location ${settings.campuses.length + 1}`,
+      address: '',
+      type: 'Campus Branch',
+    };
+    setSettings((prev) => ({
+      ...prev,
+      campuses: [...prev.campuses, newCampus],
+    }));
+  };
+
+  const handleRemoveCampus = (index: number) => {
+    if (settings.campuses.length <= 1) return;
+    setSettings((prev) => {
+      const updated = prev.campuses.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        campuses: updated,
+        seniorCampusAddress: updated[0]?.address || prev.seniorCampusAddress,
+        nurseryPrimaryAddress: updated[1]?.address || prev.nurseryPrimaryAddress,
+      };
+    });
+  };
+
+  const handleCampusChange = (index: number, field: keyof CampusLocation, value: string) => {
+    setSettings((prev) => {
+      const updated = [...prev.campuses];
+      updated[index] = { ...updated[index], [field]: value };
+      return {
+        ...prev,
+        campuses: updated,
+        seniorCampusAddress: updated[0]?.address || prev.seniorCampusAddress,
+        nurseryPrimaryAddress: updated[1]?.address || prev.nurseryPrimaryAddress,
+      };
+    });
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -160,8 +252,10 @@ export default function AdminCmsSettingsPage() {
           admissions_email: settings.admissionsEmail,
           bursar_email: settings.bursarEmail,
           principal_email: settings.principalEmail,
-          senior_campus_address: settings.seniorCampusAddress,
-          nursery_primary_address: settings.nurseryPrimaryAddress,
+          senior_campus_address: settings.campuses[0]?.address || settings.seniorCampusAddress,
+          nursery_primary_address: settings.campuses[1]?.address || settings.nurseryPrimaryAddress,
+          campus_locations: settings.campuses,
+          campuses: settings.campuses,
           bank_name: settings.bankName,
           account_name: settings.accountName,
           account_number: settings.accountNumber,
@@ -385,40 +479,80 @@ export default function AdminCmsSettingsPage() {
 
           {/* Section 3: Campus Physical Locations */}
           <div className="bg-[#111C33] border border-[#1E2E50] rounded-2xl p-6">
-            <div className="flex items-center gap-2.5 mb-5 pb-3 border-b border-[#1E2E50]">
-              <MapPin className="w-5 h-5 text-amber-400" />
-              <div>
-                <h3 className="text-sm font-bold text-white">Physical Campus Locations</h3>
-                <p className="text-[11px] text-slate-400">
-                  Full street addresses for physical visits and postal deliveries.
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-[#1E2E50]">
+              <div className="flex items-center gap-2.5">
+                <MapPin className="w-5 h-5 text-amber-400" />
+                <div>
+                  <h3 className="text-sm font-bold text-white">Physical Campus Locations</h3>
+                  <p className="text-[11px] text-slate-400">
+                    Full street addresses for physical visits, admissions tours, and postal deliveries.
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={handleAddCampus}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition shadow-xs self-start sm:self-auto cursor-pointer active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Another Location</span>
+              </button>
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  Secondary School & Boarding Hostel Campus
-                </label>
-                <input
-                  type="text"
-                  value={settings.seniorCampusAddress}
-                  onChange={(e) => handleChange('seniorCampusAddress', e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-[#0D1527] border border-[#213357] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+              {settings.campuses.map((campus, index) => (
+                <div
+                  key={campus.id || index}
+                  className="p-4 rounded-xl bg-[#0D1527] border border-[#213357] space-y-3 relative group"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-bold flex items-center justify-center shrink-0">
+                        {index + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={campus.title}
+                        onChange={(e) => handleCampusChange(index, 'title', e.target.value)}
+                        placeholder="Campus Name (e.g. Madinah Campus, Annex...)"
+                        className="bg-[#101A30] border border-[#23355A] focus:border-emerald-500 text-xs font-bold text-white focus:outline-none px-3 py-1.5 rounded-lg flex-1"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 justify-end">
+                      <input
+                        type="text"
+                        value={campus.type || ''}
+                        onChange={(e) => handleCampusChange(index, 'type', e.target.value)}
+                        placeholder="Tag (e.g. Boarding, Primary)"
+                        className="bg-[#101A30] border border-[#23355A] focus:border-emerald-500 text-[11px] text-slate-300 focus:outline-none px-2.5 py-1.5 rounded-lg w-32"
+                      />
+                      {settings.campuses.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCampus(index)}
+                          className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition cursor-pointer"
+                          title="Remove Campus Location"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
-                  Nursery & Primary School Wing Campus
-                </label>
-                <input
-                  type="text"
-                  value={settings.nurseryPrimaryAddress}
-                  onChange={(e) => handleChange('nurseryPrimaryAddress', e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-[#0D1527] border border-[#213357] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-400 block mb-1">
+                      Street Address &amp; Directions
+                    </label>
+                    <input
+                      type="text"
+                      value={campus.address}
+                      onChange={(e) => handleCampusChange(index, 'address', e.target.value)}
+                      placeholder="Full street address in Akure, landmarks, etc."
+                      className="w-full px-3.5 py-2.5 bg-[#090E1C] border border-[#213357] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -629,15 +763,25 @@ export default function AdminCmsSettingsPage() {
               {/* Campuses Preview */}
               <div className="bg-[#0D1527] p-4 rounded-xl border border-[#203258] space-y-3">
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider text-emerald-400">
-                  Campus Locations
+                  Campus Locations ({settings.campuses.length})
                 </h4>
-                <div>
-                  <div className="text-xs font-bold text-white">Secondary & Boarding Campus</div>
-                  <div className="text-xs text-slate-400 mt-0.5">{settings.seniorCampusAddress}</div>
-                </div>
-                <div className="pt-2 border-t border-[#1A284A]">
-                  <div className="text-xs font-bold text-white">Nursery & Primary Campus</div>
-                  <div className="text-xs text-slate-400 mt-0.5">{settings.nurseryPrimaryAddress}</div>
+                <div className="space-y-3">
+                  {settings.campuses.map((campus, idx) => (
+                    <div key={campus.id || idx} className={idx > 0 ? "pt-2.5 border-t border-[#1A284A]" : ""}>
+                      <div className="text-xs font-bold text-white flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          <span>{campus.title}</span>
+                        </span>
+                        {campus.type && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-emerald-300 font-mono">
+                            {campus.type}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1 pl-3">{campus.address || 'Address pending configuration'}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
