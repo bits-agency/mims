@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X, ArrowRight, ShieldCheck, Phone, MapPin, XCircle } from 'lucide-react';
+import { Menu, X, ArrowRight, ShieldCheck, Phone, XCircle, ChevronRight } from 'lucide-react';
 
 interface NavbarProps {
   currentPath?: string;
@@ -13,6 +13,23 @@ export default function Navbar({ currentPath }: NavbarProps) {
   const pathname = usePathname() || currentPath || '/';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAdmissionsOpen, setIsAdmissionsOpen] = useState<boolean>(true);
+
+  // Lock body scroll when mobile menu is open to prevent hero bleed & background scrolling
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
+  // Close menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     fetch('/api/cms/admissions-gate')
@@ -43,9 +60,9 @@ export default function Navbar({ currentPath }: NavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+    <header className="sticky top-0 z-50 bg-white border-b border-slate-200/80 shadow-xs">
       {/* Top Announcement Bar */}
-      <div className={`text-[10px] sm:text-[11px] py-1.5 px-3 sm:px-6 border-b transition-colors ${
+      <div className={`text-[10px] sm:text-[11px] py-2 px-3 sm:px-6 border-b transition-colors ${
         isAdmissionsOpen
           ? 'bg-emerald-950 text-emerald-100 border-emerald-900'
           : 'bg-slate-900 text-slate-200 border-slate-800'
@@ -128,14 +145,14 @@ export default function Navbar({ currentPath }: NavbarProps) {
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link
             href="/login"
-            className="text-xs font-bold px-3.5 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 transition hidden sm:inline-flex"
+            className="text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 transition hidden sm:inline-flex"
           >
             Portal Login
           </Link>
           {isAdmissionsOpen ? (
             <Link
               href="/admissions/apply"
-              className="text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-xs whitespace-nowrap flex items-center gap-1.5"
+              className="text-xs sm:text-sm font-bold px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-xs whitespace-nowrap flex items-center gap-1.5"
             >
               <span>Apply Now</span>
               <ArrowRight className="w-3.5 h-3.5 hidden sm:inline" />
@@ -143,39 +160,32 @@ export default function Navbar({ currentPath }: NavbarProps) {
           ) : (
             <Link
               href="/admissions"
-              className="text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition shadow-xs whitespace-nowrap flex items-center gap-1.5 border border-slate-700"
+              className="text-xs sm:text-sm font-bold px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition shadow-xs whitespace-nowrap flex items-center gap-1.5 border border-slate-700"
             >
               <span>Admissions Info</span>
             </Link>
           )}
 
-          {/* Mobile Hamburger Button */}
+          {/* Mobile Hamburger Button (Larger, prominent & touch-friendly) */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-1.5 sm:p-2 rounded-lg sm:rounded-xl text-slate-700 hover:bg-slate-100 border border-slate-200 transition shrink-0"
+            className="lg:hidden p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 border border-slate-300 transition flex items-center justify-center min-w-[44px] min-h-[44px] shadow-2xs"
             aria-label="Toggle Menu"
           >
             {mobileMenuOpen ? (
-              <X className="w-5 h-5 text-slate-800" />
+              <X className="w-6 h-6 text-slate-900" />
             ) : (
-              <Menu className="w-5 h-5 text-slate-800" />
+              <Menu className="w-6 h-6 text-slate-900" />
             )}
           </button>
         </div>
       </div>
 
-      {/* Mobile Drawer (Floats ABOVE Hero without pushing down page layout) */}
+      {/* Mobile Drawer (100% Solid White Full-Height Overlay — ZERO Hero Bleed) */}
       {mobileMenuOpen && (
-        <>
-          {/* Dimmed Backdrop */}
-          <div
-            onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 lg:hidden animate-in fade-in duration-200"
-          />
-
-          {/* Floating Dropdown Panel */}
-          <div className="lg:hidden absolute top-full left-0 right-0 w-full bg-white/98 backdrop-blur-xl border-b border-slate-200 px-5 py-5 space-y-3 shadow-2xl z-50 animate-in slide-in-from-top-2 duration-200">
-            <div className="flex flex-col space-y-1">
+        <div className="lg:hidden absolute top-full left-0 right-0 w-full min-h-[calc(100dvh-100%)] bg-white border-t border-slate-200 shadow-2xl z-50 flex flex-col justify-between p-5 pb-8 overflow-y-auto animate-in slide-in-from-top-2 duration-200">
+          <div className="space-y-4">
+            <div className="flex flex-col space-y-1.5">
               {navLinks.map((link) => {
                 const active = isActive(link.href);
                 return (
@@ -183,46 +193,60 @@ export default function Navbar({ currentPath }: NavbarProps) {
                     key={link.href}
                     href={link.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`px-3.5 py-2.5 rounded-xl text-sm font-semibold transition ${
+                    className={`px-4 py-3.5 rounded-xl text-base font-bold flex items-center justify-between transition-all ${
                       active
-                        ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/60'
-                        : 'text-slate-700 hover:bg-slate-50'
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs'
+                        : 'text-slate-800 hover:bg-slate-50 border border-transparent'
                     }`}
                   >
-                    {link.label}
+                    <span>{link.label}</span>
+                    <ChevronRight className={`w-4 h-4 ${active ? 'text-emerald-700' : 'text-slate-400'}`} />
                   </Link>
                 );
               })}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex flex-col gap-2.5">
-              <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center text-xs font-bold py-3 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 transition shadow-2xs"
-              >
-                School Portal Sign In
-              </Link>
+            <div className="pt-3 border-t border-slate-200/80 flex flex-col gap-3">
               {isAdmissionsOpen ? (
                 <Link
                   href="/admissions/apply"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center text-xs font-bold py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-md shadow-emerald-600/20"
+                  className="w-full text-center text-sm font-extrabold py-3.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2"
                 >
-                  Apply for Admission 2026/2027
+                  <span>Apply for Admission 2026/2027</span>
+                  <ArrowRight className="w-4 h-4" />
                 </Link>
               ) : (
                 <Link
                   href="/admissions"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center text-xs font-bold py-3 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition shadow-xs border border-slate-700"
+                  className="w-full text-center text-sm font-bold py-3.5 rounded-xl bg-slate-800 text-slate-100 hover:bg-slate-700 transition shadow-xs border border-slate-700"
                 >
                   Admissions Closed — View Programs
                 </Link>
               )}
+
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full text-center text-sm font-bold py-3.5 rounded-xl border border-slate-300 text-slate-800 bg-slate-50 hover:bg-slate-100 transition shadow-2xs flex items-center justify-center gap-2"
+              >
+                <span>School Portal Sign In</span>
+              </Link>
             </div>
           </div>
-        </>
+
+          {/* Institutional Contact Footnote */}
+          <div className="pt-6 mt-6 border-t border-slate-100 flex flex-col gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-slate-700 font-semibold">
+              <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Admissions Desk: +234 803 358 1947</span>
+            </div>
+            <p className="text-[11px] text-emerald-700 font-bold mt-1">
+              MSSN Islamic Model Schools Akure • Knowledge is Light
+            </p>
+          </div>
+        </div>
       )}
     </header>
   );

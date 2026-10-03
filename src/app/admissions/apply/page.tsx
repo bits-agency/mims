@@ -334,7 +334,7 @@ export default function AdmissionsApplyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans w-full max-w-full overflow-x-clip">
       <Navbar currentPath="/admissions" />
 
       {/* Header Banner */}
