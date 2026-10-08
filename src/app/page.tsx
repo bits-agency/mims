@@ -116,22 +116,24 @@ export default function HomePage() {
               className="absolute inset-0 bg-cover bg-center transition-transform duration-10000 ease-out transform scale-105"
               style={{ backgroundImage: `url('${slide.image}')` }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-900/60" />
+            {/* Lighter, high-transparency overlay so the background image is clearly visible */}
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-950/40 to-black/20" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-black/30" />
           </div>
         ))}
 
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-bold mb-4 sm:mb-6 backdrop-blur-md">
+          <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl bg-slate-950/30 sm:bg-slate-950/25 p-5 sm:p-8 rounded-3xl backdrop-blur-xs border border-white/10 shadow-2xl">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-emerald-500/25 border border-emerald-400/50 text-emerald-300 text-xs sm:text-sm font-bold mb-4 sm:mb-6 backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               {heroSlides[currentSlide].tag}
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-[1.12] sm:leading-[1.08] mb-4 sm:mb-6 text-white drop-shadow-sm">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-[1.12] sm:leading-[1.08] mb-4 sm:mb-6 text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]">
               {heroSlides[currentSlide].title}
             </h1>
 
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-slate-100 mb-6 sm:mb-8 leading-relaxed font-normal sm:font-medium max-w-3xl drop-shadow-sm">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-slate-100 mb-6 sm:mb-8 leading-relaxed font-normal sm:font-medium max-w-3xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)]">
               {heroSlides[currentSlide].desc}
             </p>
 
