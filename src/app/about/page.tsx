@@ -25,6 +25,21 @@ import {
 export default function AboutPage() {
   const photoGallery = [
     {
+      src: '/images/primary-pupils-uniform.jpg',
+      title: 'Nursery & Basic Primary Section in Uniform',
+      subtitle: 'Nurturing young minds in faith, adab, early literacy, and foundational Arabic recitation.',
+    },
+    {
+      src: '/images/primary-school-bus.jpg',
+      title: 'Monitored School Bus Transit Network',
+      subtitle: 'Safe, punctual, and air-conditioned city-wide transportation bearing our motto: "No Islam, No Paradise".',
+    },
+    {
+      src: '/images/primary-campus-courtyard.jpg',
+      title: 'Omi Eja Campus Courtyard & Primary Classrooms',
+      subtitle: 'Spacious, purpose-built educational environment designed for safety and active learning.',
+    },
+    {
       src: '/images/morning-assembly.jpg',
       title: 'Morning Spiritual Assembly & Uniform Discipline',
       subtitle: 'Instilling adab, punctual attendance, and spiritual reflection at the assembly ground.',
@@ -395,62 +410,89 @@ export default function AboutPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Madinah Quarters */}
-          <div className="bg-white p-7 rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 transition space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-black text-lg">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 hover:shadow-xl transition flex flex-col justify-between overflow-hidden group">
+            <div className="relative h-44 overflow-hidden bg-slate-900">
+              <img
+                src="/images/campus-annex.jpg"
+                alt="Madinah Quarters Campus"
+                className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+              />
+              <div className="absolute top-3 left-3 w-9 h-9 rounded-xl bg-slate-900/90 text-white flex items-center justify-center font-black text-sm backdrop-blur-xs">
                 01
               </div>
-              <h3 className="text-lg font-black text-slate-900">Madinah Quarters Campus</h3>
-              <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-                College Main Campus &amp; Boarding
-              </p>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Situated along Ilere/Ijare Road, this serene, expansive campus hosts the Senior Secondary School, boarding residences, the main science laboratories, and the central Hifzul Qur'an academy.
-              </p>
             </div>
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
-              <span>Main College &amp; Hostels</span>
-              <MapPin className="w-4 h-4" />
+            <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Madinah Quarters Campus</h3>
+                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">
+                  College Main Campus &amp; Boarding
+                </p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Situated along Ilere/Ijare Road, this serene, expansive campus hosts the Senior Secondary School, boarding residences, the main science laboratories, and the central Hifzul Qur'an academy.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
+                <span>Main College &amp; Hostels</span>
+                <MapPin className="w-4 h-4" />
+              </div>
             </div>
           </div>
 
           {/* High School Area */}
-          <div className="bg-white p-7 rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 transition space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-black text-lg">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 hover:shadow-xl transition flex flex-col justify-between overflow-hidden group">
+            <div className="relative h-44 overflow-hidden bg-slate-900">
+              <img
+                src="/images/morning-assembly.jpg"
+                alt="High School Area Campus"
+                className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+              />
+              <div className="absolute top-3 left-3 w-9 h-9 rounded-xl bg-slate-900/90 text-white flex items-center justify-center font-black text-sm backdrop-blur-xs">
                 02
               </div>
-              <h3 className="text-lg font-black text-slate-900">High School Area Campus</h3>
-              <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-                Secondary &amp; Administrative Wing
-              </p>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Located strategically in the heart of the educational zone in Akure, providing seamless daytime access for Junior and Senior secondary day students, central administrative oversight, and exam registration.
-              </p>
             </div>
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
-              <span>Central Urban Access</span>
-              <MapPin className="w-4 h-4" />
+            <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">High School Area Campus</h3>
+                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">
+                  Secondary &amp; Administrative Wing
+                </p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Located strategically in the heart of the educational zone in Akure, providing seamless daytime access for Junior and Senior secondary day students, central administrative oversight, and exam registration.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
+                <span>Central Urban Access</span>
+                <MapPin className="w-4 h-4" />
+              </div>
             </div>
           </div>
 
           {/* Omi Eja Annex */}
-          <div className="bg-white p-7 rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 transition space-y-4 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-black text-lg">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-500 hover:shadow-xl transition flex flex-col justify-between overflow-hidden group">
+            <div className="relative h-44 overflow-hidden bg-slate-900">
+              <img
+                src="/images/primary-campus-courtyard.jpg"
+                alt="Omi Eja Annex Primary Center"
+                className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+              />
+              <div className="absolute top-3 left-3 w-9 h-9 rounded-xl bg-slate-900/90 text-white flex items-center justify-center font-black text-sm backdrop-blur-xs">
                 03
               </div>
-              <h3 className="text-lg font-black text-slate-900">Omi Eja Annex</h3>
-              <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-                Early Childhood &amp; Primary Wing
-              </p>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                A warm, safe, and nurturing environment specifically configured for Crèche, Pre-Nursery, Nursery, and Basic Primary education with child-friendly playgrounds, audio-visual phonics, and early Arabic foundations.
-              </p>
             </div>
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
-              <span>Infant &amp; Basic School</span>
-              <MapPin className="w-4 h-4" />
+            <div className="p-6 space-y-3 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Omi Eja Annex</h3>
+                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">
+                  Early Childhood &amp; Primary Wing
+                </p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  A warm, safe, and nurturing environment specifically configured for Crèche, Pre-Nursery, Nursery, and Basic Primary education with child-friendly playgrounds, audio-visual phonics, and early Arabic foundations.
+                </p>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700">
+                <span>Infant &amp; Basic School</span>
+                <MapPin className="w-4 h-4" />
+              </div>
             </div>
           </div>
         </div>

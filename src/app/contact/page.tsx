@@ -40,6 +40,7 @@ export default function ContactPage() {
     {
       name: 'Madinah Quarters Campus',
       tagline: 'Main College, Boarding & Hifzul Qur’an Academy',
+      image: '/images/campus-annex.jpg',
       address: 'Along Ilere/Ijare Road, Madinah Quarters, Akure, Ondo State, Nigeria',
       lead: 'Ustadh K. A. Adeleke (Campus Director)',
       phone: '+234 803 358 1947 / +234 814 220 9043',
@@ -56,6 +57,7 @@ export default function ContactPage() {
     {
       name: 'High School Area Campus',
       tagline: 'Secondary & Central Administrative Wing',
+      image: '/images/morning-assembly.jpg',
       address: 'High School Area, Off Oba Adesida / Oyemekun Road Axis, Akure, Ondo State',
       lead: 'Hajia F. M. Bello (Registrar / Dean)',
       phone: '+234 806 712 4490 / +234 802 884 1120',
@@ -72,6 +74,7 @@ export default function ContactPage() {
     {
       name: 'Omi Eja Annex',
       tagline: 'Early Childhood & Basic Primary Center',
+      image: '/images/primary-pupils-uniform.jpg',
       address: 'Omi Eja Community, Off Ondo Road, Akure, Ondo State, Nigeria',
       lead: 'Mrs. R. O. Sulaiman (Headmistress)',
       phone: '+234 816 559 3012 / +234 805 119 7804',
@@ -110,19 +113,25 @@ export default function ContactPage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <Navbar currentPath="/contact" />
 
-      {/* Hero Banner */}
-      <section className="relative bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 text-white py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-5xl mx-auto text-center space-y-5">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-bold uppercase tracking-wider">
+      {/* Hero Banner with Primary School Campus Background */}
+      <section className="relative overflow-hidden bg-slate-950 text-white py-20 sm:py-28 px-4 sm:px-6 lg:px-8">
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-30 scale-105 transform"
+          style={{ backgroundImage: "url('/images/primary-campus-courtyard.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/95 via-slate-950/90 to-emerald-950/80" />
+
+        <div className="max-w-5xl mx-auto text-center space-y-5 relative z-10">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-bold uppercase tracking-wider backdrop-blur-md">
             <Building className="w-4 h-4 text-emerald-400" />
             <span>3 Operational Centers Across Akure Metropolis</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight drop-shadow-md">
             Campuses &amp; Contact Directory
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-200 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-slate-200 max-w-3xl mx-auto leading-relaxed drop-shadow-sm">
             Have an inquiry about admissions, campus visits, boarding facilities, or transfer requirements? Our administrative and pastoral team across High School Area, Omi Eja Annex, and Madinah Quarters are here to assist you.
           </p>
         </div>
@@ -146,56 +155,70 @@ export default function ContactPage() {
           {campuses.map((campus, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xs hover:border-emerald-500 hover:shadow-md transition space-y-6 flex flex-col justify-between"
+              className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-xs hover:border-emerald-500 hover:shadow-xl transition flex flex-col justify-between group"
             >
-              <div className="space-y-4">
-                <div>
-                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold uppercase tracking-wider border border-emerald-200 inline-block mb-2">
-                    Campus {idx + 1}
-                  </span>
-                  <h3 className="text-xl font-black text-slate-900">{campus.name}</h3>
-                  <p className="text-xs font-semibold text-emerald-700 mt-1">{campus.tagline}</p>
-                </div>
-
-                <div className="space-y-2.5 text-xs text-slate-600 border-t border-slate-100 pt-4">
-                  <div className="flex items-start gap-2.5">
-                    <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <span>{campus.address}</span>
+              <div className="relative h-52 overflow-hidden bg-slate-900">
+                <img
+                  src={campus.image}
+                  alt={campus.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-4">
+                  <div>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/90 text-slate-950 text-[10px] font-black uppercase tracking-wider inline-block">
+                      Campus 0{idx + 1}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{campus.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{campus.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{campus.hours}</span>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-100 pt-4 space-y-2">
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Key Facilities:</h4>
-                  <ul className="space-y-1.5 text-xs text-slate-600">
-                    {campus.features.map((feature, fIdx) => (
-                      <li key={fIdx} className="flex items-center gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100">
-                <Link
-                  href="/admissions/apply"
-                  className="w-full block text-center py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-emerald-600 transition"
-                >
-                  Apply to this Campus
-                </Link>
+              <div className="p-6 sm:p-8 space-y-6 flex-1 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">{campus.name}</h3>
+                    <p className="text-xs font-semibold text-emerald-700 mt-1">{campus.tagline}</p>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs text-slate-600 border-t border-slate-100 pt-4">
+                    <div className="flex items-start gap-2.5">
+                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>{campus.address}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <Phone className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{campus.phone}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{campus.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <Clock className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{campus.hours}</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-4 space-y-2">
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Key Facilities:</h4>
+                    <ul className="space-y-1.5 text-xs text-slate-600">
+                      {campus.features.map((feature, fIdx) => (
+                        <li key={fIdx} className="flex items-center gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100">
+                  <Link
+                    href="/admissions/apply"
+                    className="w-full block text-center py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-emerald-600 transition"
+                  >
+                    Apply to this Campus
+                  </Link>
+                </div>
               </div>
             </div>
           ))}
@@ -379,6 +402,38 @@ export default function ContactPage() {
               <p className="text-xs text-slate-600 leading-relaxed pl-6">{faq.a}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Transportation & Logistics Fleet Spotlight */}
+      <section className="bg-slate-900 text-white py-16 px-4 sm:px-6 lg:px-8 border-t border-slate-800">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+          <div className="md:col-span-5 rounded-3xl overflow-hidden shadow-2xl border-2 border-emerald-500/30 group">
+            <img
+              src="/images/primary-school-bus.jpg"
+              alt="MIMS School Bus Network Akure"
+              className="w-full h-auto object-cover group-hover:scale-105 transition duration-500"
+            />
+          </div>
+          <div className="md:col-span-7 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-400/30">
+              <span>Safe Logistics &amp; Student Transit</span>
+            </div>
+            <h3 className="text-2xl sm:text-3xl font-black text-white">
+              City-Wide Dedicated Bus Route Network
+            </h3>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              We operate dedicated, monitored school transit vans covering major routes in Akure, ensuring prompt morning pick-ups and safe afternoon drop-offs for day students in both our Nursery, Primary, and Secondary sections.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <span className="text-[11px] font-semibold bg-white/10 px-3 py-1 rounded-lg text-emerald-300 border border-white/10">Oba-Ile Axis</span>
+              <span className="text-[11px] font-semibold bg-white/10 px-3 py-1 rounded-lg text-emerald-300 border border-white/10">Ijapo Estate</span>
+              <span className="text-[11px] font-semibold bg-white/10 px-3 py-1 rounded-lg text-emerald-300 border border-white/10">Alagbaka</span>
+              <span className="text-[11px] font-semibold bg-white/10 px-3 py-1 rounded-lg text-emerald-300 border border-white/10">FUTA Road</span>
+              <span className="text-[11px] font-semibold bg-white/10 px-3 py-1 rounded-lg text-emerald-300 border border-white/10">Ondo Road</span>
+              <span className="text-[11px] font-semibold bg-white/10 px-3 py-1 rounded-lg text-emerald-300 border border-white/10">Shagari Village</span>
+            </div>
+          </div>
         </div>
       </section>
 

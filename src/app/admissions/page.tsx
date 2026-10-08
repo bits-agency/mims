@@ -405,12 +405,58 @@ export default function AdmissionsPage() {
           </div>
 
           <div className="lg:col-span-6">
-            <div className="rounded-2xl overflow-hidden shadow-xl border-4 border-white bg-slate-900 group">
-              <img
-                src="/images/campus-annex.jpg"
-                alt="Madinah Quarters Campus Building"
-                className="w-full h-auto object-cover group-hover:scale-105 transition duration-500"
-              />
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="relative rounded-2xl overflow-hidden shadow-md border-2 border-white bg-slate-900 group aspect-4/3">
+                <img
+                  src="/images/campus-annex.jpg"
+                  alt="Madinah Quarters College & Boarding"
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2.5">
+                  <span className="text-[10px] font-bold text-white bg-slate-950/70 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                    Madinah Boarding Campus
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative rounded-2xl overflow-hidden shadow-md border-2 border-white bg-slate-900 group aspect-4/3">
+                <img
+                  src="/images/primary-pupils-uniform.jpg"
+                  alt="Primary School Pupils in Uniform"
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2.5">
+                  <span className="text-[10px] font-bold text-white bg-slate-950/70 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                    Nursery & Primary Pupils
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative rounded-2xl overflow-hidden shadow-md border-2 border-white bg-slate-900 group aspect-4/3">
+                <img
+                  src="/images/primary-campus-courtyard.jpg"
+                  alt="Omi Eja Primary Courtyard"
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2.5">
+                  <span className="text-[10px] font-bold text-white bg-slate-950/70 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                    Omi Eja Campus Courtyard
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative rounded-2xl overflow-hidden shadow-md border-2 border-white bg-slate-900 group aspect-4/3">
+                <img
+                  src="/images/primary-school-bus.jpg"
+                  alt="MIMS School Bus Logistics Network"
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-2.5">
+                  <span className="text-[10px] font-bold text-white bg-slate-950/70 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                    School Bus Transit Network
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -28,10 +28,22 @@ import {
 
 const heroSlides = [
   {
+    image: '/images/primary-pupils-uniform.jpg',
+    tag: 'Early Childhood & Basic Primary Center',
+    title: 'Nurturing Formative Minds With Moral Uprightness & Faith',
+    desc: 'Instilling character, Tajweed recitation, numeracy, and foundational literacy from early childhood across our serene Akure primary school campuses.',
+  },
+  {
     image: '/images/morning-assembly.jpg',
     tag: 'Faith, Moral Uprightness & Discipline',
     title: 'Excellence in Academic & Character',
     desc: 'MSSN Islamic Model Schools, Akure (formerly Al-Birr Islamic Model College) blends a rigorous Western curriculum with sound Islamic training under our inspiring motto: "Knowledge is Light".',
+  },
+  {
+    image: '/images/primary-school-bus.jpg',
+    tag: 'Safe Logistics & City-Wide Bus Network',
+    title: 'Dedicated School Transportation Network',
+    desc: 'Safe, comfortable, and reliable daily transit for day pupils across all major residential corridors in Akure metropolis backed by our "No Islam, No Paradise" ethos.',
   },
   {
     image: '/images/library-study.jpg',
@@ -46,9 +58,9 @@ const heroSlides = [
     desc: 'Fostering teamwork, athletic stamina, and leadership through competitive sports leagues alongside top-tier STEM and humanities curricula.',
   },
   {
-    image: '/images/campus-annex.jpg',
+    image: '/images/primary-campus-courtyard.jpg',
     tag: 'Multiple City Campuses: High School, Omi Eja & Madinah',
-    title: 'Islamic Education, Western Education & Hifzul Qur’an',
+    title: 'Purpose-Built Classrooms & Quran Sanad Academies',
     desc: 'Equipped science laboratories, comprehensive boarding facilities, and a specialized Hifzul Qur’an track dedicated to complete Al-Qur’an memorization.',
   },
   {
@@ -343,15 +355,29 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Early Childhood & Primary */}
-            <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl transition">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-6">
-                <HeartHandshake className="w-6 h-6" />
+            <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl transition flex flex-col justify-between group overflow-hidden">
+              <div>
+                <div className="relative h-44 rounded-2xl overflow-hidden mb-6 border border-slate-200/70 shadow-xs">
+                  <img
+                    src="/images/primary-pupils-uniform.jpg"
+                    alt="MIMS Primary School Pupils in Uniform"
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent flex items-end p-3">
+                    <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider bg-slate-900/80 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                      Authentic Learning Environment
+                    </span>
+                  </div>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+                  <HeartHandshake className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Early Childhood & Primary</h3>
+                <p className="text-xs text-emerald-700 font-bold mb-4">Crèche • Pre-Nursery • Nursery • Primary</p>
+                <p className="text-xs text-slate-600 leading-relaxed mb-6">
+                  A warm, nurturing foundation fostering early literacy, numeracy, social etiquette (Adaab), and foundational Arabic alphabets for sound early childhood development.
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Early Childhood & Primary</h3>
-              <p className="text-xs text-emerald-700 font-bold mb-4">Crèche • Pre-Nursery • Nursery • Primary</p>
-              <p className="text-xs text-slate-600 leading-relaxed mb-6">
-                A warm, nurturing foundation fostering early literacy, numeracy, social etiquette (Adaab), and foundational Arabic alphabets for sound early childhood development.
-              </p>
               <Link href="/admissions" className="text-xs font-bold text-emerald-600 hover:underline">
                 Explore Primary Curriculum →
               </Link>
@@ -487,40 +513,76 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200">
-              <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 font-black text-xs flex items-center justify-center mb-4">
-                01
-              </span>
-              <h3 className="font-extrabold text-base text-slate-900 mb-1">Madinah Quarters Campus</h3>
-              <p className="text-xs text-emerald-700 font-bold mb-3">Main College & Boarding Complex</p>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Medina Community, Ilere/Ijare Road, Akure. Houses our modern laboratories, college annex, and boarding dormitories.
-              </p>
-              <span className="text-[11px] font-semibold text-slate-500">Boarding & Day Facilities</span>
+            <div className="rounded-3xl bg-slate-50 border border-slate-200 overflow-hidden group hover:shadow-xl transition">
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src="/images/campus-annex.jpg"
+                  alt="Madinah Quarters Campus"
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                />
+                <span className="absolute top-4 left-4 w-8 h-8 rounded-xl bg-slate-900/90 text-white font-black text-xs flex items-center justify-center backdrop-blur-xs">
+                  01
+                </span>
+                <span className="absolute bottom-3 right-3 text-[10px] font-bold text-white bg-emerald-950/80 px-2.5 py-1 rounded-full backdrop-blur-xs">
+                  Secondary & Boarding
+                </span>
+              </div>
+              <div className="p-6">
+                <h3 className="font-extrabold text-base text-slate-900 mb-1">Madinah Quarters Campus</h3>
+                <p className="text-xs text-emerald-700 font-bold mb-3">Main College & Boarding Complex</p>
+                <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                  Medina Community, Ilere/Ijare Road, Akure. Houses our modern laboratories, college annex, and boarding dormitories.
+                </p>
+                <span className="text-[11px] font-semibold text-slate-500">Boarding & Day Facilities</span>
+              </div>
             </div>
 
-            <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200">
-              <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 font-black text-xs flex items-center justify-center mb-4">
-                02
-              </span>
-              <h3 className="font-extrabold text-base text-slate-900 mb-1">High School Area Campus</h3>
-              <p className="text-xs text-emerald-700 font-bold mb-3">Primary & Secondary Classrooms</p>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Centrally situated in the High School zone of Akure with secure learning spaces and active morning assemblies.
-              </p>
-              <span className="text-[11px] font-semibold text-slate-500">Primary & Junior Secondary</span>
+            <div className="rounded-3xl bg-slate-50 border border-slate-200 overflow-hidden group hover:shadow-xl transition">
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src="/images/morning-assembly.jpg"
+                  alt="High School Area Campus"
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                />
+                <span className="absolute top-4 left-4 w-8 h-8 rounded-xl bg-slate-900/90 text-white font-black text-xs flex items-center justify-center backdrop-blur-xs">
+                  02
+                </span>
+                <span className="absolute bottom-3 right-3 text-[10px] font-bold text-white bg-emerald-950/80 px-2.5 py-1 rounded-full backdrop-blur-xs">
+                  Central Admin & Day Wing
+                </span>
+              </div>
+              <div className="p-6">
+                <h3 className="font-extrabold text-base text-slate-900 mb-1">High School Area Campus</h3>
+                <p className="text-xs text-emerald-700 font-bold mb-3">Primary & Secondary Classrooms</p>
+                <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                  Centrally situated in the High School zone of Akure with secure learning spaces and active morning assemblies.
+                </p>
+                <span className="text-[11px] font-semibold text-slate-500">Primary & Junior Secondary</span>
+              </div>
             </div>
 
-            <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200">
-              <span className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 font-black text-xs flex items-center justify-center mb-4">
-                03
-              </span>
-              <h3 className="font-extrabold text-base text-slate-900 mb-1">Omi Eja Annex Center</h3>
-              <p className="text-xs text-emerald-700 font-bold mb-3">Early Childhood & Primary Care</p>
-              <p className="text-xs text-slate-600 leading-relaxed mb-4">
-                Specialized early learning center accommodating crèche, nursery, and primary school pupils in a caring environment.
-              </p>
-              <span className="text-[11px] font-semibold text-slate-500">Crèche, Nursery & Primary</span>
+            <div className="rounded-3xl bg-slate-50 border border-slate-200 overflow-hidden group hover:shadow-xl transition">
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src="/images/primary-campus-courtyard.jpg"
+                  alt="Omi Eja Annex Primary Center"
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                />
+                <span className="absolute top-4 left-4 w-8 h-8 rounded-xl bg-slate-900/90 text-white font-black text-xs flex items-center justify-center backdrop-blur-xs">
+                  03
+                </span>
+                <span className="absolute bottom-3 right-3 text-[10px] font-bold text-white bg-emerald-950/80 px-2.5 py-1 rounded-full backdrop-blur-xs">
+                  Crèche, Nursery & Primary
+                </span>
+              </div>
+              <div className="p-6">
+                <h3 className="font-extrabold text-base text-slate-900 mb-1">Omi Eja Annex Center</h3>
+                <p className="text-xs text-emerald-700 font-bold mb-3">Early Childhood & Primary Care</p>
+                <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                  Specialized early learning center accommodating crèche, nursery, and primary school pupils in a caring environment.
+                </p>
+                <span className="text-[11px] font-semibold text-slate-500">Crèche, Nursery & Primary</span>
+              </div>
             </div>
           </div>
 
