@@ -10,7 +10,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://mimsakure.vercel.app'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://mims.sch.ng'),
   title: {
     default: 'MSSN Islamic Model Schools Akure (MIMS) — Best Islamic & Western Education in Ondo State',
     template: '%s | MSSN Islamic Model Schools Akure',
@@ -37,7 +37,10 @@ export const metadata: Metadata = {
   publisher: 'MSSN Akure Area Council',
   category: 'Education',
   alternates: {
-    canonical: 'https://mimsakure.vercel.app',
+    canonical: 'https://mims.sch.ng',
+  },
+  verification: {
+    google: 'elhPZ0jPLyhv39SP-6GUX_RPz_zNh9aKl3wP-CYr5P0',
   },
   icons: {
     icon: [
@@ -55,7 +58,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_NG',
-    url: 'https://mimsakure.vercel.app',
+    url: 'https://mims.sch.ng',
     siteName: 'MSSN Islamic Model Schools Akure (MIMS)',
     title: 'MSSN Islamic Model Schools Akure (MIMS) — Ranked #1 in Ondo Central',
     description:
@@ -101,9 +104,9 @@ const jsonLd = {
   '@type': 'EducationalOrganization',
   name: 'MSSN Islamic Model Schools Akure',
   alternateName: ['MIMS Akure', 'Al-Birr Islamic Model College'],
-  url: 'https://mimsakure.vercel.app',
-  logo: 'https://mimsakure.vercel.app/images/logo.png',
-  image: 'https://mimsakure.vercel.app/images/campus-annex.jpg',
+  url: 'https://mims.sch.ng',
+  logo: 'https://mims.sch.ng/images/logo.png',
+  image: 'https://mims.sch.ng/images/campus-annex.jpg',
   description:
     'Premier K-12 Islamic and Western educational institution in Akure, Ondo State. Winner of 1st Position in Ondo Central Senatorial District 2025.',
   address: {
