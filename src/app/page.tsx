@@ -123,8 +123,8 @@ export default function HomePage() {
         ))}
 
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl bg-slate-950/30 sm:bg-slate-950/25 p-5 sm:p-8 rounded-3xl backdrop-blur-xs border border-white/10 shadow-2xl">
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-emerald-500/25 border border-emerald-400/50 text-emerald-300 text-xs sm:text-sm font-bold mb-4 sm:mb-6 backdrop-blur-md">
+          <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-bold mb-4 sm:mb-6 backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               {heroSlides[currentSlide].tag}
             </div>

@@ -121,8 +121,8 @@ export default function ContactPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-emerald-950/50 to-slate-950/45" />
 
-        <div className="max-w-5xl mx-auto text-center space-y-5 relative z-10 bg-slate-950/30 p-6 sm:p-10 rounded-3xl backdrop-blur-xs border border-white/10 shadow-2xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/25 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-bold uppercase tracking-wider backdrop-blur-md">
+        <div className="max-w-5xl mx-auto text-center space-y-5 relative z-10">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-bold uppercase tracking-wider backdrop-blur-md">
             <Building className="w-4 h-4 text-emerald-400" />
             <span>3 Operational Centers Across Akure Metropolis</span>
           </div>
