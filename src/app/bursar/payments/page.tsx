@@ -44,6 +44,7 @@ export default function BursarPaymentPage() {
   const [students, setStudents] = useState<StudentAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentAccount | null>(null);
   const [amountPaying, setAmountPaying] = useState<number | ''>('');
   const [paymentMethod, setPaymentMethod] = useState('Official Direct Bank Transfer');
@@ -79,11 +80,7 @@ export default function BursarPaymentPage() {
             };
           });
           setStudents(mapped);
-          if (mapped.length > 0) {
-            setSelectedStudent(mapped[0]);
-            const bal = Math.max(0, mapped[0].totalFee - mapped[0].previouslyPaid);
-            setAmountPaying(bal > 0 ? bal : 0);
-          }
+          // Do not auto-select anyone so the page loads cleanly with the search bar ready
         }
       } catch (err) {
         console.error('Failed to load students for payment entry:', err);
@@ -94,22 +91,43 @@ export default function BursarPaymentPage() {
     loadStudents();
   }, []);
 
+  const handleSelectStudent = (student: StudentAccount) => {
+    setSelectedStudent(student);
+    setSearchQuery(`${student.name} (${student.admissionNo})`);
+    const balance = Math.max(0, student.totalFee - student.previouslyPaid);
+    setAmountPaying(balance > 0 ? balance : 0);
+    setErrorMessage(null);
+    setShowSuggestions(false);
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setShowSuggestions(false);
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      setErrorMessage('Please enter an admission number or student name.');
+      return;
+    }
     const found = students.find(
       (s) =>
-        s.admissionNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.name.toLowerCase().includes(searchQuery.toLowerCase())
+        s.admissionNo.toLowerCase().includes(query) ||
+        s.name.toLowerCase().includes(query)
     );
     if (found) {
-      setSelectedStudent(found);
-      const balance = Math.max(0, found.totalFee - found.previouslyPaid);
-      setAmountPaying(balance > 0 ? balance : 0);
+      handleSelectStudent(found);
     } else {
       setErrorMessage(`No student matching "${searchQuery}" found in the database.`);
     }
   };
+
+  const matchingSuggestions = searchQuery.trim()
+    ? students.filter(
+        (s) =>
+          s.admissionNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
 
   const currentBalance = selectedStudent
     ? Math.max(0, selectedStudent.totalFee - selectedStudent.previouslyPaid)
@@ -231,34 +249,107 @@ export default function BursarPaymentPage() {
       </div>
 
       {/* Search Student Box */}
-      <form onSubmit={handleSearch} className="bg-[#111C33] border border-[#1E2E50] p-4 rounded-2xl shadow-sm">
-        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-          Search Registered Student (Admission Number or Full Name)
-        </label>
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="e.g. MIMS/2026/0014 or Ahmad Bello"
-              className="w-full bg-[#0D1527] border border-[#203258] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
-            />
+      <div className="bg-[#111C33] border border-[#1E2E50] p-4 rounded-2xl shadow-sm relative">
+        <form onSubmit={handleSearch}>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              Search Registered Student (Admission Number or Full Name)
+            </label>
+            {students.length > 0 && (
+              <span className="text-[10px] text-emerald-400 font-bold">
+                {students.length} student{students.length > 1 ? 's' : ''} registered
+              </span>
+            )}
           </div>
-          <button
-            type="submit"
-            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition shrink-0"
-          >
-            Locate Dossier
-          </button>
-        </div>
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onFocus={() => setShowSuggestions(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSuggestions(true);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                placeholder="e.g. MIMS/2026/784 or Ahmad Bello"
+                className="w-full bg-[#0D1527] border border-[#203258] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition shrink-0 flex items-center gap-1.5"
+            >
+              <Search className="w-3.5 h-3.5" />
+              Locate Dossier
+            </button>
+          </div>
+        </form>
+
+        {/* Live Auto-Suggest Dropdown */}
+        {showSuggestions && matchingSuggestions.length > 0 && (
+          <div className="absolute left-4 right-4 top-[84px] z-30 bg-[#0D1527] border border-emerald-500/40 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
+            <div className="p-2 text-[10px] uppercase font-bold text-slate-400 border-b border-[#1E2E50] bg-[#111C33] flex items-center justify-between">
+              <span>Matching Registered Students</span>
+              <button
+                type="button"
+                onClick={() => setShowSuggestions(false)}
+                className="text-slate-500 hover:text-white text-[10px]"
+              >
+                Close ✕
+              </button>
+            </div>
+            {matchingSuggestions.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => handleSelectStudent(s)}
+                className="w-full px-4 py-2.5 text-left hover:bg-emerald-500/10 flex items-center justify-between border-b border-[#1E2E50]/50 last:border-none transition group"
+              >
+                <div>
+                  <p className="text-xs font-bold text-white group-hover:text-emerald-300">{s.name}</p>
+                  <p className="text-[10px] text-slate-400">{s.classArm} • {s.admissionNo}</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] font-bold text-emerald-400">
+                    ₦{Math.max(0, s.totalFee - s.previouslyPaid).toLocaleString()} due
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Quick Pick Pills for Active Students */}
+        {students.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-[#1E2E50] flex flex-wrap items-center gap-2">
+            <span className="text-[10px] text-slate-400 uppercase font-bold mr-1">Quick Select:</span>
+            {students.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => handleSelectStudent(s)}
+                className={`text-[11px] px-2.5 py-1 rounded-lg border transition font-medium flex items-center gap-1.5 ${
+                  selectedStudent?.id === s.id
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs'
+                    : 'bg-[#0D1527] text-slate-300 border-[#203258] hover:border-emerald-500/50 hover:text-white'
+                }`}
+              >
+                <User className="w-3 h-3 text-emerald-400" />
+                <span>{s.name}</span>
+                <span className="text-[10px] text-slate-500">({s.admissionNo})</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {errorMessage && (
           <p className="text-xs text-rose-400 mt-2 font-medium flex items-center gap-1.5">
             <AlertTriangle className="w-3.5 h-3.5" /> {errorMessage}
           </p>
         )}
-      </form>
+      </div>
 
       {selectedStudent ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -488,12 +579,31 @@ export default function BursarPaymentPage() {
           </div>
         </div>
       ) : (
-        <div className="p-12 text-center bg-[#111C33] border border-[#1E2E50] rounded-2xl text-slate-400 space-y-3">
-          <Inbox className="w-10 h-10 mx-auto text-slate-500" />
-          <h4 className="text-sm font-bold text-white">No Student Selected</h4>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Search for a registered student by admission number above to log a fee payment.
-          </p>
+        <div className="p-10 text-center bg-[#111C33] border border-[#1E2E50] rounded-2xl text-slate-400 space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#0D1527] border border-[#203258] flex items-center justify-center mx-auto text-emerald-400 shadow-inner">
+            <Search className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-sm font-bold text-white">No Student Dossier Loaded</h4>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Search by admission number (e.g. MIMS/2026/784) or name above, or click any student in the Quick Select list to view their ledger and post payments.
+            </p>
+          </div>
+          {students.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 pt-2">
+              {students.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => handleSelectStudent(s)}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600/15 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 transition flex items-center gap-2 group"
+                >
+                  <User className="w-3.5 h-3.5 text-emerald-400 group-hover:text-white" />
+                  <span>Load {s.name} ({s.admissionNo})</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

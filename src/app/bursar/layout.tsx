@@ -91,20 +91,6 @@ export default function BursarPortalLayout({
             </div>
           </Link>
 
-          {/* Real-time Collection Indicator Pill */}
-          <div className="mx-4 my-3 p-3 rounded-2xl bg-[#111C33] border border-[#1E2E50]">
-            <div className="flex items-center justify-between text-[11px] mb-1">
-              <span className="text-slate-300 font-bold">Term Collection</span>
-              <span className="text-emerald-400 font-extrabold">87.5%</span>
-            </div>
-            <div className="w-full bg-[#0D1527] rounded-full h-2 overflow-hidden border border-[#1B2945]">
-              <div className="bg-emerald-500 h-2 rounded-full w-[87.5%]" />
-            </div>
-            <span className="text-[10px] text-slate-400 block mt-1.5 font-medium">
-              ₦68.4M of ₦78.2M Goal
-            </span>
-          </div>
-
           {/* Navigation Items */}
           <nav className="p-4 space-y-1 text-xs font-semibold">
             {bursarNavItems.map((item) => {

@@ -124,16 +124,16 @@ export default function HomePage() {
 
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-bold mb-4 sm:mb-6 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-bold mb-3 sm:mb-4 backdrop-blur-md">
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               {heroSlides[currentSlide].tag}
             </div>
 
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-[1.12] sm:leading-[1.08] mb-4 sm:mb-6 text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl xl:text-[3.25rem] font-black tracking-tight leading-[1.18] sm:leading-[1.15] mb-3 sm:mb-4 text-white drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)] max-w-3xl">
               {heroSlides[currentSlide].title}
             </h1>
 
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-slate-100 mb-6 sm:mb-8 leading-relaxed font-normal sm:font-medium max-w-3xl drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)]">
+            <p className="text-xs sm:text-base lg:text-lg text-slate-100 mb-5 sm:mb-6 leading-relaxed font-normal sm:font-medium max-w-2xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
               {heroSlides[currentSlide].desc}
             </p>
 
