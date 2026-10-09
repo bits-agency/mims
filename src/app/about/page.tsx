@@ -94,10 +94,10 @@ export default function AboutPage() {
 
           <div className="pt-4 flex flex-wrap justify-center gap-3 sm:gap-4 text-xs sm:text-sm font-semibold">
             <Link
-              href="/admissions/apply"
+              href="/admissions"
               className="px-6 py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-400 transition shadow-lg flex items-center gap-2"
             >
-              <span>Enroll for 2026/2027 Session</span>
+              <span>Enrollment &amp; Admissions Guide</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link

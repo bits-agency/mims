@@ -150,10 +150,10 @@ function LoginFormContent() {
           New applicant or prospective student?
         </p>
         <Link
-          href="/admissions/apply"
+          href="/admissions"
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition"
         >
-          <span>Fill Online Admission Application</span>
+          <span>Admissions &amp; Application Guide</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>

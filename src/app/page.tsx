@@ -23,7 +23,9 @@ import {
   Menu,
   X,
   GraduationCap,
-  Building2
+  Building2,
+  AlertCircle,
+  XCircle
 } from 'lucide-react';
 
 const heroSlides = [
@@ -83,6 +85,34 @@ const topJambScorers = [
 export default function HomePage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [gateConfig, setGateConfig] = useState({
+    isOpen: true,
+    targetSession: '2026/2027 Academic Session',
+    announcementNotice: '',
+    closedNotice: '',
+    loaded: false,
+  });
+
+  useEffect(() => {
+    async function checkAdmissionsGate() {
+      try {
+        const res = await fetch('/api/cms/admissions-gate', { cache: 'no-store' });
+        const data = await res.json();
+        if (data?.success && data.config) {
+          setGateConfig({
+            isOpen: typeof data.config.isOpen === 'boolean' ? data.config.isOpen : typeof data.config.is_open === 'boolean' ? data.config.is_open : true,
+            targetSession: data.config.targetSession || data.config.target_session || '2026/2027 Academic Session',
+            announcementNotice: data.config.announcementNotice || data.config.announcement_notice || '',
+            closedNotice: data.config.closedNotice || data.config.closed_notice || '',
+            loaded: true,
+          });
+        }
+      } catch (err) {
+        console.warn('Admissions gate check error:', err);
+      }
+    }
+    checkAdmissionsGate();
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -124,10 +154,17 @@ export default function HomePage() {
 
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <div className="w-full max-w-3xl lg:max-w-4xl xl:max-w-5xl">
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-bold mb-3 sm:mb-4 backdrop-blur-md">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              {heroSlides[currentSlide].tag}
-            </div>
+            {gateConfig.loaded && !gateConfig.isOpen ? (
+              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-rose-500/25 border border-rose-400/50 text-rose-300 text-xs sm:text-sm font-bold mb-3 sm:mb-4 backdrop-blur-md">
+                <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                <span>Admissions Closed • {gateConfig.targetSession}</span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs sm:text-sm font-bold mb-3 sm:mb-4 backdrop-blur-md">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>{heroSlides[currentSlide].tag}</span>
+              </div>
+            )}
 
             <h1 className="text-2xl sm:text-4xl lg:text-5xl xl:text-[3.25rem] font-black tracking-tight leading-[1.18] sm:leading-[1.15] mb-3 sm:mb-4 text-white drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)] max-w-3xl">
               {heroSlides[currentSlide].title}
@@ -137,20 +174,53 @@ export default function HomePage() {
               {heroSlides[currentSlide].desc}
             </p>
 
+            {/* If Closed, display prominent notice banner right in the hero */}
+            {gateConfig.loaded && !gateConfig.isOpen && (
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-rose-950/80 border border-rose-500/40 text-rose-200 text-xs sm:text-sm leading-relaxed mb-5 sm:mb-6 max-w-2xl backdrop-blur-md flex items-start gap-2.5 shadow-xl">
+                <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-white font-bold block mb-0.5">Online Admissions Notice:</strong>
+                  <span>
+                    {gateConfig.closedNotice || 'Online admissions for the current academic cycle are currently closed. All entrance screening tests have concluded. For transfer inquiries, kindly contact the school registry.'}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-              <Link
-                href="/admissions/apply"
-                className="inline-flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-base transition shadow-xl shadow-emerald-500/30 transform active:scale-95"
-              >
-                Apply for Admission
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link
-                href="/about"
-                className="inline-flex items-center gap-2 px-6 sm:px-7 py-3 sm:py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-base backdrop-blur-md border border-white/20 transition transform active:scale-95"
-              >
-                Learn About MIMS
-              </Link>
+              {gateConfig.loaded && !gateConfig.isOpen ? (
+                <>
+                  <Link
+                    href="/admissions"
+                    className="inline-flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs sm:text-base transition border border-slate-700 shadow-xl transform active:scale-95"
+                  >
+                    <span>Admissions Closed — View Guide</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    href="/contact"
+                    className="inline-flex items-center gap-2 px-6 sm:px-7 py-3 sm:py-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-base transition shadow-lg shadow-rose-950/40 transform active:scale-95"
+                  >
+                    <span>Contact Registry</span>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/admissions/apply"
+                    className="inline-flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-base transition shadow-xl shadow-emerald-500/30 transform active:scale-95"
+                  >
+                    Apply for Admission
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    href="/about"
+                    className="inline-flex items-center gap-2 px-6 sm:px-7 py-3 sm:py-4 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-base backdrop-blur-md border border-white/20 transition transform active:scale-95"
+                  >
+                    Learn About MIMS
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

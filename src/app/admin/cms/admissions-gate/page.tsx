@@ -61,7 +61,7 @@ export default function AdminCmsAdmissionsGatePage() {
   useEffect(() => {
     async function loadGateConfig() {
       try {
-        const res = await fetch('/api/cms/admissions-gate');
+        const res = await fetch('/api/cms/admissions-gate', { cache: 'no-store' });
         const data = await res.json();
         if (data?.success && data.config) {
           setConfig((prev) => ({

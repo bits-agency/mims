@@ -32,7 +32,7 @@ export default function Navbar({ currentPath }: NavbarProps) {
   }, [pathname]);
 
   useEffect(() => {
-    fetch('/api/cms/admissions-gate')
+    fetch('/api/cms/admissions-gate', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (data?.success && data?.config) {

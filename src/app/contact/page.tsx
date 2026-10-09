@@ -213,10 +213,10 @@ export default function ContactPage() {
 
                 <div className="pt-4 border-t border-slate-100">
                   <Link
-                    href="/admissions/apply"
+                    href="/admissions"
                     className="w-full block text-center py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-emerald-600 transition"
                   >
-                    Apply to this Campus
+                    Admissions &amp; Enrollment Guide
                   </Link>
                 </div>
               </div>

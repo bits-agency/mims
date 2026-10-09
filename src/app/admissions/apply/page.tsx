@@ -52,7 +52,7 @@ export default function AdmissionsApplyPage() {
   useEffect(() => {
     async function checkGate() {
       try {
-        const res = await fetch('/api/cms/admissions-gate');
+        const res = await fetch('/api/cms/admissions-gate', { cache: 'no-store' });
         const data = await res.json();
         if (data?.success && data.config) {
           setGateConfig({
