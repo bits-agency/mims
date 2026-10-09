@@ -93,21 +93,27 @@ export async function POST(request: Request) {
 
         if (payErr) throw payErr;
 
-        // 2. Update clearance row
+        // 2. Update or Insert clearance row for this specific session & term
+        const activeSession = session || '2025/2026';
+        const activeTerm = term || 'first';
+
         const { data: currentClearance } = await supabase
           .from('student_fee_clearance')
           .select('*')
           .eq('student_id', studentId)
-          .eq('session', session || '2025/2026')
-          .eq('term', term || 'first')
-          .single();
+          .eq('session', activeSession)
+          .eq('term', activeTerm)
+          .maybeSingle();
+
+        let updatedClearanceData: any = null;
 
         if (currentClearance) {
           const newPaid = Number(currentClearance.total_paid || 0) + Number(amountPaid);
-          const newBalance = Math.max(0, Number(currentClearance.total_billed || 0) - newPaid);
+          const totalBilled = Number(currentClearance.total_billed || 55000);
+          const newBalance = Math.max(0, totalBilled - newPaid);
           const isCleared = newBalance === 0;
 
-          await supabase
+          const { data: updated } = await supabase
             .from('student_fee_clearance')
             .update({
               total_paid: newPaid,
@@ -116,8 +122,63 @@ export async function POST(request: Request) {
               last_payment_date: new Date().toISOString().split('T')[0],
               updated_at: new Date().toISOString(),
             })
-            .eq('id', currentClearance.id);
+            .eq('id', currentClearance.id)
+            .select()
+            .single();
+
+          updatedClearanceData = updated || {
+            total_paid: newPaid,
+            total_billed: totalBilled,
+            balance: newBalance,
+            is_cleared: isCleared,
+          };
+        } else {
+          // If no clearance record exists for this term, create one
+          const totalBilled = 55000;
+          const newPaid = Number(amountPaid);
+          const newBalance = Math.max(0, totalBilled - newPaid);
+          const isCleared = newBalance === 0;
+
+          const { data: inserted } = await supabase
+            .from('student_fee_clearance')
+            .insert({
+              student_id: studentId,
+              session: activeSession,
+              term: activeTerm,
+              total_billed: totalBilled,
+              total_paid: newPaid,
+              balance: newBalance,
+              is_cleared: isCleared,
+              last_payment_date: new Date().toISOString().split('T')[0],
+            })
+            .select()
+            .single();
+
+          updatedClearanceData = inserted || {
+            total_paid: newPaid,
+            total_billed: totalBilled,
+            balance: newBalance,
+            is_cleared: isCleared,
+          };
         }
+
+        return NextResponse.json({
+          success: true,
+          clearance: updatedClearanceData,
+          receipt: {
+            receiptNo,
+            admissionNo: admissionNo || 'MIMS/2026/0042',
+            studentName: studentName || 'Pupil',
+            amountPaid: Number(amountPaid),
+            session: activeSession,
+            term: activeTerm,
+            paymentDate: new Date().toLocaleDateString('en-GB'),
+            method: paymentMethod || 'Direct Bank Transfer',
+            channelRef: channelRef || `NIP-${Math.floor(100000 + Math.random() * 900000)}`,
+            status: updatedClearanceData?.is_cleared ? 'VERIFIED & FULLY CLEARED' : 'VERIFIED (PARTIAL PAYMENT)',
+          },
+          message: 'Payment recorded and official stamped receipt generated successfully.',
+        });
       } catch (dbErr) {
         console.warn('DB write error, returning generated receipt:', dbErr);
       }
@@ -130,6 +191,8 @@ export async function POST(request: Request) {
         admissionNo: admissionNo || 'MIMS/2026/0042',
         studentName: studentName || 'Pupil',
         amountPaid: Number(amountPaid),
+        session: session || '2025/2026',
+        term: term || 'first',
         paymentDate: new Date().toLocaleDateString('en-GB'),
         method: paymentMethod || 'Direct Bank Transfer',
         channelRef: channelRef || `NIP-${Math.floor(100000 + Math.random() * 900000)}`,

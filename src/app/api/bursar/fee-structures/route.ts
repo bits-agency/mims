@@ -198,10 +198,30 @@ function saveStoredFeeData(data: any) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const term = searchParams.get('term') as 'first' | 'second' | 'third' | null;
+
     const data = getStoredFeeData();
-    return NextResponse.json({ success: true, ...data });
+    let structures = data.structures;
+
+    // If termStructures exist and a specific term is requested, return that term's structures
+    if (term && data.termStructures && data.termStructures[term]) {
+      structures = data.termStructures[term];
+    }
+
+    return NextResponse.json({
+      success: true,
+      bankAccounts: data.bankAccounts,
+      structures,
+      termStructures: data.termStructures || {
+        first: data.structures,
+        second: data.structures,
+        third: data.structures,
+      },
+      activeTerm: term || 'first',
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -220,6 +240,15 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const current = getStoredFeeData();
+    const targetTerm = (body.term as 'first' | 'second' | 'third') || null;
+
+    if (!current.termStructures) {
+      current.termStructures = {
+        first: current.structures,
+        second: current.structures,
+        third: current.structures,
+      };
+    }
 
     if (body.structures && Array.isArray(body.structures)) {
       // Recalculate totalFee for each structure
@@ -230,7 +259,15 @@ export async function POST(request: Request) {
           totalFee: total,
         };
       });
-      current.structures = updatedStructures;
+
+      if (targetTerm) {
+        current.termStructures[targetTerm] = updatedStructures;
+        if (targetTerm === 'first') {
+          current.structures = updatedStructures;
+        }
+      } else {
+        current.structures = updatedStructures;
+      }
     }
 
     if (body.bankAccounts) {
@@ -244,7 +281,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Fee structures and bank accounts updated successfully.',
+      message: targetTerm
+        ? `Fee structure tariffs for ${targetTerm === 'first' ? 'First' : targetTerm === 'second' ? 'Second' : 'Third'} Term updated successfully.`
+        : 'Fee structures and bank accounts updated successfully.',
       ...current,
     });
   } catch (error: unknown) {

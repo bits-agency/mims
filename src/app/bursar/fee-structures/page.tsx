@@ -19,12 +19,13 @@ import { LevelFeeStructure, BankAccountConfig, FeeLevy } from '@/app/api/bursar/
 export default function BursarFeeStructuresPage() {
   const [structures, setStructures] = useState<LevelFeeStructure[]>([]);
   const [bankAccounts, setBankAccounts] = useState<Record<string, BankAccountConfig>>({});
+  const [selectedTerm, setSelectedTerm] = useState<'first' | 'second' | 'third'>('first');
   const [loading, setLoading] = useState(true);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = async (termToLoad: string = selectedTerm) => {
     try {
-      const res = await fetch('/api/bursar/fee-structures');
+      const res = await fetch(`/api/bursar/fee-structures?term=${termToLoad}`);
       const data = await res.json();
       if (data.success) {
         if (data.structures) setStructures(data.structures);
@@ -38,8 +39,8 @@ export default function BursarFeeStructuresPage() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(selectedTerm);
+  }, [selectedTerm]);
 
   const copyAccount = (key: string, accNo: string) => {
     navigator.clipboard.writeText(accNo);
@@ -175,15 +176,55 @@ export default function BursarFeeStructuresPage() {
 
       {/* Multi-Levy Structures Section */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#1E2E50]">
           <div>
             <h2 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-blue-400" />
               Approved Academic Tariffs &amp; Priority Clearance Schedule
             </h2>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              During partial payments, system clears levies in ascending priority order (Priority 1 clears first).
+              Official institutional fee structures for{' '}
+              <strong className="text-white">
+                {selectedTerm === 'first' ? '1st Term' : selectedTerm === 'second' ? '2nd Term' : '3rd Term'}
+              </strong>. Partial payments clear levies in priority order.
             </p>
+          </div>
+
+          {/* Interactive Term Switcher */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('first')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                selectedTerm === 'first'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              1st Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('second')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                selectedTerm === 'second'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              2nd Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('third')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                selectedTerm === 'third'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              3rd Term
+            </button>
           </div>
         </div>
 

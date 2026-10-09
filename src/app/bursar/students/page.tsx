@@ -17,6 +17,8 @@ import {
 export default function BursarStudentsLedgerPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeWing, setActiveWing] = useState<'all' | 'primary' | 'secondary'>('all');
+  const [selectedSession, setSelectedSession] = useState('2025/2026');
+  const [selectedTerm, setSelectedTerm] = useState<'first' | 'second' | 'third'>('first');
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'All' | 'Cleared' | 'Owing'>('All');
@@ -59,24 +61,37 @@ export default function BursarStudentsLedgerPage() {
     loadStudents();
   }, [activeWing]);
 
+  // Helper to extract clearance status for a student for the active session & term
+  const getStudentClr = (std: any) => {
+    const clrs = std.student_fee_clearance || [];
+    const found = clrs.find(
+      (c: any) => (c.session || '2025/2026') === selectedSession && (c.term || 'first') === selectedTerm
+    );
+    const billed = Number(found?.total_billed || 55000);
+    const paid = Number(found?.total_paid || 0);
+    const balance = Math.max(0, billed - paid);
+    const isCleared = found?.is_cleared ?? (balance === 0 && billed > 0);
+    return { billed, paid, balance, isCleared };
+  };
+
   const filteredStudents = students.filter((student) => {
     const name = `${student.firstname || ''} ${student.lastname || ''}`.toLowerCase();
     const admNo = (student.admission_no || '').toLowerCase();
     const q = searchQuery.toLowerCase();
     const matchesSearch = name.includes(q) || admNo.includes(q);
 
-    const isCleared = student.student_fee_clearance?.[0]?.is_cleared ?? false;
+    const clr = getStudentClr(student);
     const matchesStatus =
       statusFilter === 'All'
         ? true
         : statusFilter === 'Cleared'
-        ? isCleared
-        : !isCleared;
+        ? clr.isCleared
+        : !clr.isCleared;
 
     return matchesSearch && matchesStatus;
   });
 
-  const clearedCount = students.filter((s) => s.student_fee_clearance?.[0]?.is_cleared).length;
+  const clearedCount = students.filter((s) => getStudentClr(s).isCleared).length;
   const owingCount = students.length - clearedCount;
 
   return (
@@ -95,7 +110,10 @@ export default function BursarStudentsLedgerPage() {
             Master Student Fee Ledger
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Live database records, debt tracking, and fee-gated academic clearance status.
+            Live database records, debt tracking, and fee-gated academic clearance status for{' '}
+            <strong className="text-white">
+              {selectedTerm === 'first' ? '1st Term' : selectedTerm === 'second' ? '2nd Term' : '3rd Term'} ({selectedSession})
+            </strong>.
           </p>
         </div>
 
@@ -159,10 +177,62 @@ export default function BursarStudentsLedgerPage() {
 
       {/* Filter and Stats Bar */}
       <div className="bg-[#111C33] border border-[#1E2E50] rounded-2xl p-5 shadow-sm space-y-4">
+        {/* Term & Session Switcher Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#1E2E50] gap-3">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-[10px] uppercase font-bold text-slate-400">Target Session:</span>
+            <select
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className="bg-[#0D1527] border border-[#213357] rounded-lg px-2.5 py-1 text-xs font-bold text-white focus:outline-none"
+            >
+              <option value="2025/2026">2025/2026 Session</option>
+              <option value="2024/2025">2024/2025 Session</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+            <span className="text-[10px] text-slate-400 uppercase font-bold mr-1">Term:</span>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('first')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'first'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              1st Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('second')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'second'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              2nd Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('third')}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'third'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              3rd Term
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[11px] uppercase font-bold text-slate-400 mb-1.5">
-              Financial Status Filter
+              Financial Status Filter ({selectedTerm === 'first' ? '1st Term' : selectedTerm === 'second' ? '2nd Term' : '3rd Term'})
             </label>
             <select
               value={statusFilter}
@@ -221,20 +291,16 @@ export default function BursarStudentsLedgerPage() {
                 <tr className="border-b border-[#1E2E50] bg-[#0E172A] text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                   <th className="py-3.5 px-4">Student Profile</th>
                   <th className="py-3.5 px-4">Class Arm</th>
-                  <th className="py-3.5 px-4">Billed Fee</th>
+                  <th className="py-3.5 px-4">Term Billed</th>
                   <th className="py-3.5 px-4">Total Paid</th>
-                  <th className="py-3.5 px-4">Balance</th>
+                  <th className="py-3.5 px-4">Term Balance</th>
                   <th className="py-3.5 px-4">Clearance Status</th>
                   <th className="py-3.5 px-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1A284A]">
                 {filteredStudents.map((std) => {
-                  const clr = std.student_fee_clearance?.[0];
-                  const billed = Number(clr?.total_billed || 55000);
-                  const paid = Number(clr?.total_paid || 0);
-                  const balance = Number(clr?.balance ?? (billed - paid));
-                  const isCleared = clr?.is_cleared ?? (balance === 0);
+                  const clr = getStudentClr(std);
 
                   return (
                     <tr key={std.id} className="hover:bg-[#152340] transition">
@@ -250,18 +316,18 @@ export default function BursarStudentsLedgerPage() {
                         {std.classes?.class_name} {std.classes?.section}
                       </td>
                       <td className="py-3.5 px-4 font-mono text-slate-300">
-                        ₦{billed.toLocaleString()}
+                        ₦{clr.billed.toLocaleString()}
                       </td>
                       <td className="py-3.5 px-4 font-mono font-bold text-emerald-400">
-                        ₦{paid.toLocaleString()}
+                        ₦{clr.paid.toLocaleString()}
                       </td>
                       <td className="py-3.5 px-4 font-mono font-bold">
-                        <span className={balance === 0 ? 'text-slate-400' : 'text-rose-400'}>
-                          ₦{balance.toLocaleString()}
+                        <span className={clr.balance === 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                          ₦{clr.balance.toLocaleString()}
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
-                        {isCleared ? (
+                        {clr.isCleared ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                             <CheckCircle2 className="w-3 h-3" /> Cleared
                           </span>
@@ -273,7 +339,7 @@ export default function BursarStudentsLedgerPage() {
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <Link
-                          href={`/bursar/payments?student=${std.admission_no}`}
+                          href={`/bursar/payments?student=${std.admission_no}&session=${selectedSession}&term=${selectedTerm}`}
                           className="px-3 py-1.5 rounded-lg bg-[#182645] hover:bg-[#203259] text-slate-200 text-xs font-bold transition border border-[#23355A]"
                         >
                           Credit
@@ -288,7 +354,7 @@ export default function BursarStudentsLedgerPage() {
         ) : (
           <div className="py-14 text-center text-slate-400 space-y-3">
             <Inbox className="w-10 h-10 mx-auto text-slate-500" />
-            <h4 className="text-xs font-bold text-white">No Student Ledger Records Yet</h4>
+            <h4 className="text-xs font-bold text-white">No Student Ledger Records for {selectedTerm === 'first' ? '1st Term' : selectedTerm === 'second' ? '2nd Term' : '3rd Term'}</h4>
             <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
               Students enrolled into classes will appear here with automated fee billing and clearance tracking.
             </p>

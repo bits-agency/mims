@@ -24,7 +24,7 @@ export async function GET(request: Request) {
             guardian_phone,
             guardian_email,
             classes (id, class_name, section, wing),
-            student_fee_clearance (is_cleared, balance, total_billed, total_paid)
+            student_fee_clearance (id, is_cleared, balance, total_billed, total_paid, session, term)
           `)
           .not('class_id', 'is', null)
           .order('admission_no', { ascending: true });

@@ -18,6 +18,8 @@ import {
 export default function BursarDefaultersPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeWing, setActiveWing] = useState<'all' | 'primary' | 'secondary'>('all');
+  const [selectedSession, setSelectedSession] = useState('2025/2026');
+  const [selectedTerm, setSelectedTerm] = useState<'first' | 'second' | 'third' | 'all'>('first');
   const [defaulters, setDefaulters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,13 +42,16 @@ export default function BursarDefaultersPage() {
       .catch(() => {});
   }, []);
 
-  // 2. Load defaulters filtered by active wing
+  // 2. Load defaulters filtered by active wing, session, and term
   useEffect(() => {
     async function loadDefaulters() {
       setLoading(true);
       try {
-        const wingParam = activeWing !== 'all' ? `?wing=${activeWing}` : '';
-        const res = await fetch(`/api/bursar/defaulters${wingParam}`);
+        const wingParam = activeWing !== 'all' ? `wing=${activeWing}` : '';
+        const sessionParam = `session=${selectedSession}`;
+        const termParam = selectedTerm !== 'all' ? `term=${selectedTerm}` : '';
+        const query = [wingParam, sessionParam, termParam].filter(Boolean).join('&');
+        const res = await fetch(`/api/bursar/defaulters${query ? `?${query}` : ''}`);
         const data = await res.json();
         if (data?.success && data.defaulters) {
           setDefaulters(data.defaulters);
@@ -58,7 +63,7 @@ export default function BursarDefaultersPage() {
       }
     }
     loadDefaulters();
-  }, [activeWing]);
+  }, [activeWing, selectedSession, selectedTerm]);
 
   const filtered = defaulters.filter((d) => {
     const studentName = `${d.students?.firstname || ''} ${d.students?.lastname || ''}`.toLowerCase();
@@ -75,8 +80,16 @@ export default function BursarDefaultersPage() {
     const parentName = item.students?.guardian_name || 'Parent/Guardian';
     const admNo = item.students?.admission_no || '';
     const balance = Number(item.balance || 0).toLocaleString();
+    const itemTerm = item.term || (selectedTerm !== 'all' ? selectedTerm : 'first');
+    const termLabel =
+      itemTerm === 'first'
+        ? '1st Term'
+        : itemTerm === 'second'
+        ? '2nd Term'
+        : '3rd Term';
+    const sess = item.session || selectedSession;
 
-    const notice = `Dear ${parentName}, this is a gentle reminder from MSSN Islamic Model Schools Akure Bursary. Your child, ${name} (${admNo}), has an outstanding fee balance of ₦${balance}.00. Please settle this balance to allow academic report card access. Remit directly to the official school bank account with the student's admission number as narration. Jazakallahu Khairan.`;
+    const notice = `Dear ${parentName}, this is a gentle reminder from MSSN Islamic Model Schools Akure Bursary. Your child, ${name} (${admNo}), has an outstanding balance of ₦${balance}.00 for ${termLabel} (${sess}). Please settle this balance to allow academic report card access. Remit directly to the official school bank account with the student's admission number as narration. Jazakallahu Khairan.`;
 
     navigator.clipboard.writeText(notice);
     setCopiedId(item.id);
@@ -100,11 +113,82 @@ export default function BursarDefaultersPage() {
             Debtors &amp; Fee Defaulters Desk
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Live database view of students with outstanding balances whose academic results remain locked.
+            Live database view of students with outstanding balances whose academic results remain locked for{' '}
+            <strong className="text-white">
+              {selectedTerm === 'all'
+                ? 'All Terms'
+                : selectedTerm === 'first'
+                ? '1st Term'
+                : selectedTerm === 'second'
+                ? '2nd Term'
+                : '3rd Term'}{' '}
+              ({selectedSession})
+            </strong>.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {/* Session Selector */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+            <span className="text-[10px] font-bold text-slate-400 px-2 uppercase">Session:</span>
+            <select
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className="bg-transparent text-white text-xs font-bold px-2 py-1 focus:outline-none cursor-pointer"
+            >
+              <option value="2025/2026" className="bg-[#0D1527] text-white">2025/2026</option>
+              <option value="2024/2025" className="bg-[#0D1527] text-white">2024/2025</option>
+            </select>
+          </div>
+
+          {/* Term Switcher */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('first')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'first'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              1st Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('second')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'second'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              2nd Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('third')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'third'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              3rd Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'all'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              All
+            </button>
+          </div>
+
           {/* Wing Switcher for Chief Bursar */}
           {(currentUser?.wing === 'all' || !currentUser?.wing) && (
             <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
@@ -201,10 +285,11 @@ export default function BursarDefaultersPage() {
                   <th className="py-3.5 px-4">Student Profile</th>
                   <th className="py-3.5 px-4">Parent / Guardian</th>
                   <th className="py-3.5 px-4">Class Arm</th>
+                  <th className="py-3.5 px-4">Billing Term</th>
                   <th className="py-3.5 px-4">Billed</th>
                   <th className="py-3.5 px-4">Paid</th>
                   <th className="py-3.5 px-4">Outstanding</th>
-                  <th className="py-3.5 px-4 text-right">Dispatch Notice</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1A284A]">
@@ -229,6 +314,11 @@ export default function BursarDefaultersPage() {
                     <td className="py-3.5 px-4 text-slate-300">
                       {row.students?.classes?.class_name} {row.students?.classes?.section}
                     </td>
+                    <td className="py-3.5 px-4">
+                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-[#101A2F] border border-[#1C2C4E] text-slate-300 font-mono">
+                        {row.term === 'first' ? '1st Term' : row.term === 'second' ? '2nd Term' : row.term === 'third' ? '3rd Term' : selectedTerm !== 'all' ? selectedTerm : '1st Term'} ({row.session || selectedSession})
+                      </span>
+                    </td>
                     <td className="py-3.5 px-4 font-mono text-slate-300">
                       ₦{Number(row.total_billed).toLocaleString()}
                     </td>
@@ -239,24 +329,32 @@ export default function BursarDefaultersPage() {
                       ₦{Number(row.balance).toLocaleString()}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => handleCopyNotice(row)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ml-auto border ${
-                          copiedId === row.id
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                            : 'bg-[#182645] hover:bg-[#203259] text-slate-200 border-[#23355A]'
-                        }`}
-                      >
-                        {copiedId === row.id ? (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Copied!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" /> Copy Notice
-                          </>
-                        )}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/bursar/payments?student=${row.students?.admission_no || ''}&session=${row.session || selectedSession}&term=${row.term || (selectedTerm !== 'all' ? selectedTerm : 'first')}`}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1 shadow-xs"
+                        >
+                          <Receipt className="w-3.5 h-3.5" /> Clear
+                        </Link>
+                        <button
+                          onClick={() => handleCopyNotice(row)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 border ${
+                            copiedId === row.id
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              : 'bg-[#182645] hover:bg-[#203259] text-slate-200 border-[#23355A]'
+                          }`}
+                        >
+                          {copiedId === row.id ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" /> Notice
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

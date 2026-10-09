@@ -29,6 +29,16 @@ import {
   FeeLevy
 } from '@/lib/bursary';
 
+interface TermClearanceItem {
+  id?: string;
+  session?: string;
+  term?: string;
+  total_billed?: number;
+  total_paid?: number;
+  balance?: number;
+  is_cleared?: boolean;
+}
+
 interface StudentAccount {
   id: string;
   admissionNo: string;
@@ -38,11 +48,14 @@ interface StudentAccount {
   totalFee: number;
   previouslyPaid: number;
   levies: FeeLevy[];
+  clearances: TermClearanceItem[];
 }
 
 export default function BursarPaymentPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeWing, setActiveWing] = useState<'all' | 'primary' | 'secondary'>('all');
+  const [selectedSession, setSelectedSession] = useState('2025/2026');
+  const [selectedTerm, setSelectedTerm] = useState<'first' | 'second' | 'third'>('first');
   const [students, setStudents] = useState<StudentAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,12 +96,17 @@ export default function BursarPaymentPage() {
         const data = await res.json();
         if (data?.success && data.students) {
           const mapped: StudentAccount[] = data.students.map((s: any) => {
-            const clr = s.student_fee_clearance?.[0];
+            const rawClearances: TermClearanceItem[] = s.student_fee_clearance || [];
             const wing = s.classes?.wing || (s.classes?.class_name?.toLowerCase().includes('primary') ? 'Primary' : 'Senior Secondary');
             const levies = getLeviesForStudentClass(s.classes?.class_name);
             const calculatedTotal = levies.reduce((sum, l) => sum + Number(l.amount || 0), 0);
-            const billed = Number(clr?.total_billed || calculatedTotal);
-            const paid = Number(clr?.total_paid || 0);
+            
+            // Find clearance matching current session & term if present
+            const activeClr = rawClearances.find(
+              (c) => (c.session || '2025/2026') === selectedSession && (c.term || 'first') === selectedTerm
+            );
+            const billed = Number(activeClr?.total_billed || calculatedTotal);
+            const paid = Number(activeClr?.total_paid || 0);
 
             return {
               id: s.id,
@@ -99,15 +117,40 @@ export default function BursarPaymentPage() {
               totalFee: billed,
               previouslyPaid: paid,
               levies: levies,
+              clearances: rawClearances,
             };
           });
           setStudents(mapped);
 
-          // If a student is currently selected but is no longer in the filtered list, reset selection
+          // If URL params exist (e.g. from Defaulters or Ledger desk), auto-select specified student & term
+          if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const stdQuery = params.get('student');
+            const termQuery = params.get('term') as 'first' | 'second' | 'third' | null;
+            const sessQuery = params.get('session');
+            if (sessQuery) setSelectedSession(sessQuery);
+            if (termQuery && ['first', 'second', 'third'].includes(termQuery)) {
+              setSelectedTerm(termQuery);
+            }
+            if (stdQuery) {
+              const matched = mapped.find(
+                (m) =>
+                  m.admissionNo.toLowerCase() === stdQuery.toLowerCase() ||
+                  m.id === stdQuery ||
+                  m.name.toLowerCase().includes(stdQuery.toLowerCase())
+              );
+              if (matched) {
+                setSelectedStudent(matched);
+                setSearchQuery(`${matched.name} (${matched.admissionNo})`);
+              }
+            }
+          }
+
+          // If a student is currently selected, keep their dossier in sync with latest records
           setSelectedStudent((prev) => {
             if (!prev) return null;
-            const exists = mapped.find((m) => m.id === prev.id);
-            return exists || null;
+            const updated = mapped.find((m) => m.id === prev.id);
+            return updated || null;
           });
         }
       } catch (err) {
@@ -117,13 +160,30 @@ export default function BursarPaymentPage() {
       }
     }
     loadStudents();
-  }, [activeWing]);
+  }, [activeWing, selectedSession, selectedTerm]);
+
+  // Helper to extract clearance status for a specific term
+  const getTermInfo = (student: StudentAccount | null, termName: 'first' | 'second' | 'third') => {
+    if (!student) return { billed: 55000, paid: 0, balance: 55000, isCleared: false };
+    const clr = (student.clearances || []).find(
+      (c) => (c.session || '2025/2026') === selectedSession && (c.term || 'first') === termName
+    );
+    const calculatedTotal = student.levies.reduce((sum, l) => sum + Number(l.amount || 0), 0);
+    const billed = Number(clr?.total_billed ?? (calculatedTotal || 55000));
+    const paid = Number(clr?.total_paid ?? 0);
+    const balance = Math.max(0, billed - paid);
+    const isCleared = clr?.is_cleared ?? (balance === 0 && billed > 0);
+    return { billed, paid, balance, isCleared };
+  };
+
+  const currentTermInfo = getTermInfo(selectedStudent, selectedTerm);
+  const currentBalance = currentTermInfo.balance;
 
   const handleSelectStudent = (student: StudentAccount) => {
     setSelectedStudent(student);
     setSearchQuery(`${student.name} (${student.admissionNo})`);
-    const balance = Math.max(0, student.totalFee - student.previouslyPaid);
-    setAmountPaying(balance > 0 ? balance : 0);
+    // CRITICAL: Amount paying starts completely empty so it does NOT falsely trigger "Full Clearance"
+    setAmountPaying('');
     setErrorMessage(null);
     setShowSuggestions(false);
   };
@@ -157,16 +217,13 @@ export default function BursarPaymentPage() {
       )
     : [];
 
-  const currentBalance = selectedStudent
-    ? Math.max(0, selectedStudent.totalFee - selectedStudent.previouslyPaid)
-    : 0;
   const numericAmount = typeof amountPaying === 'number' ? amountPaying : 0;
   const simulatedRemaining = Math.max(0, currentBalance - numericAmount);
   const willBeCleared = simulatedRemaining === 0 && numericAmount > 0;
 
   // Live preview of levy clearing
   const previewLevies = selectedStudent
-    ? allocatePaymentToLevies(selectedStudent.levies, selectedStudent.previouslyPaid + numericAmount)
+    ? allocatePaymentToLevies(selectedStudent.levies, currentTermInfo.paid + numericAmount)
     : null;
 
   const handleProcessPayment = async (e: React.FormEvent) => {
@@ -176,7 +233,7 @@ export default function BursarPaymentPage() {
     setProcessing(true);
     try {
       const bankDetails = getBankAccountForWing(selectedStudent.wing);
-      const cumPaid = selectedStudent.previouslyPaid + Number(amountPaying);
+      const cumPaid = currentTermInfo.paid + Number(amountPaying);
       const allocationResult = allocatePaymentToLevies(selectedStudent.levies, cumPaid);
 
       const res = await fetch('/api/bursar/payments', {
@@ -189,13 +246,16 @@ export default function BursarPaymentPage() {
           amountPaid: Number(amountPaying),
           paymentMethod,
           channelRef: referenceNo || `REF-${Date.now().toString().slice(-6)}`,
-          term: 'first',
-          session: '2025/2026',
+          term: selectedTerm,
+          session: selectedSession,
         }),
       });
 
       const data = await res.json();
       if (data?.success && data.receipt) {
+        const newBalance = Math.max(0, currentTermInfo.billed - cumPaid);
+        const isNowCleared = newBalance === 0;
+
         setRecentReceipt({
           ...data.receipt,
           admissionNo: selectedStudent.admissionNo,
@@ -203,21 +263,49 @@ export default function BursarPaymentPage() {
           classArm: selectedStudent.classArm,
           wing: selectedStudent.wing,
           bankAccount: bankDetails,
-          previousPaid: selectedStudent.previouslyPaid,
+          previousPaid: currentTermInfo.paid,
           amountThisPayment: Number(amountPaying),
           cumulativePaid: cumPaid,
-          totalFee: selectedStudent.totalFee,
-          balanceAfter: Math.max(0, selectedStudent.totalFee - cumPaid),
-          cleared: Math.max(0, selectedStudent.totalFee - cumPaid) === 0,
+          totalFee: currentTermInfo.billed,
+          balanceAfter: newBalance,
+          cleared: isNowCleared,
           allocatedLevies: allocationResult.allocated,
+          session: selectedSession,
+          term: selectedTerm,
           timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
           dateFormatted: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
         });
         setReceiptGenerated(true);
 
-        setSelectedStudent((prev) =>
-          prev ? { ...prev, previouslyPaid: cumPaid } : null
+        // Update student in state to immediately show status change to Cleared / Partial
+        const updatedClearances = [...(selectedStudent.clearances || [])];
+        const existingIdx = updatedClearances.findIndex(
+          (c) => (c.session || '2025/2026') === selectedSession && (c.term || 'first') === selectedTerm
         );
+        const updatedItem: TermClearanceItem = {
+          session: selectedSession,
+          term: selectedTerm,
+          total_billed: currentTermInfo.billed,
+          total_paid: cumPaid,
+          balance: newBalance,
+          is_cleared: isNowCleared,
+        };
+        if (existingIdx >= 0) {
+          updatedClearances[existingIdx] = updatedItem;
+        } else {
+          updatedClearances.push(updatedItem);
+        }
+
+        const updatedStudent: StudentAccount = {
+          ...selectedStudent,
+          previouslyPaid: cumPaid,
+          totalFee: currentTermInfo.billed,
+          clearances: updatedClearances,
+        };
+
+        setSelectedStudent(updatedStudent);
+        setStudents((prev) => prev.map((s) => (s.id === selectedStudent.id ? updatedStudent : s)));
+        setAmountPaying('');
       }
     } catch (err) {
       console.error('Payment processing failed:', err);
@@ -446,26 +534,112 @@ export default function BursarPaymentPage() {
                 </div>
               </div>
 
-              {/* Financial Snapshot */}
+              {/* Financial Snapshot for Active Term */}
               <div className="space-y-2 text-xs">
-                <div className="flex justify-between py-1">
-                  <span className="text-slate-400">Total Billed Fee:</span>
-                  <span className="font-mono font-bold text-white">
-                    ₦{selectedStudent.totalFee.toLocaleString()}.00
+                <div className="flex items-center justify-between pb-1.5 border-b border-[#1E2E50]/60">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">
+                    Active Billing Term:
+                  </span>
+                  <span className="text-xs font-bold text-emerald-400">
+                    {selectedTerm === 'first' ? '1st Term' : selectedTerm === 'second' ? '2nd Term' : '3rd Term'} ({selectedSession})
                   </span>
                 </div>
                 <div className="flex justify-between py-1">
-                  <span className="text-slate-400">Previously Paid:</span>
+                  <span className="text-slate-400">Term Billed Fee:</span>
+                  <span className="font-mono font-bold text-white">
+                    ₦{currentTermInfo.billed.toLocaleString()}.00
+                  </span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-slate-400">Paid This Term:</span>
                   <span className="font-mono font-bold text-emerald-400">
-                    ₦{selectedStudent.previouslyPaid.toLocaleString()}.00
+                    ₦{currentTermInfo.paid.toLocaleString()}.00
                   </span>
                 </div>
                 <div className="flex justify-between py-1 border-t border-[#1E2E50]">
                   <span className="text-slate-400 font-bold">Outstanding Balance:</span>
-                  <span className="font-mono font-black text-rose-400 text-sm">
+                  <span className={`font-mono font-black text-sm ${currentBalance === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                     ₦{currentBalance.toLocaleString()}.00
                   </span>
                 </div>
+                <div className="pt-1 flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold">Term Clearance:</span>
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                      currentBalance === 0
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                    }`}
+                  >
+                    {currentBalance === 0 ? 'CLEARED' : 'OWING'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Multi-Term Ledger & Previous Debt / Arrears Breakdown */}
+              <div className="p-3.5 rounded-xl bg-[#0D1527] border border-[#1E2E50] space-y-2.5 text-xs">
+                <div className="flex items-center justify-between border-b border-[#1A284A] pb-1.5">
+                  <span className="text-[10px] uppercase font-black tracking-wider text-slate-300">
+                    Term-by-Term Ledger (Arrears &amp; Fees)
+                  </span>
+                  <span className="text-[10px] text-slate-500">{selectedSession}</span>
+                </div>
+
+                {(['first', 'second', 'third'] as const).map((t) => {
+                  const info = getTermInfo(selectedStudent, t);
+                  const isSelected = selectedTerm === t;
+                  const label = t === 'first' ? '1st Term' : t === 'second' ? '2nd Term' : '3rd Term';
+
+                  return (
+                    <div
+                      key={t}
+                      className={`p-2 rounded-lg border transition text-[11px] flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-emerald-500/10 border-emerald-500/40 shadow-xs'
+                          : 'bg-[#101A2F] border-[#1C2C4E]'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <strong className="text-white">{label}</strong>
+                          {isSelected && (
+                            <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 rounded font-bold">
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                          Paid: ₦{info.paid.toLocaleString()} • Bal: <span className={info.balance > 0 ? 'text-rose-400 font-bold' : 'text-emerald-400'}>₦{info.balance.toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                            info.isCleared
+                              ? 'bg-emerald-500/20 text-emerald-300'
+                              : 'bg-rose-500/20 text-rose-300'
+                          }`}
+                        >
+                          {info.isCleared ? 'CLEARED' : 'OWING'}
+                        </span>
+
+                        {!isSelected && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedTerm(t);
+                              setAmountPaying('');
+                            }}
+                            className="text-[10px] text-blue-400 hover:text-white underline font-bold"
+                          >
+                            {info.balance > 0 ? 'Clear Debt' : 'Switch'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Designated School Account */}
@@ -528,12 +702,76 @@ export default function BursarPaymentPage() {
           {/* Right Column: Payment Entry Form */}
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-[#111C33] border border-[#1E2E50] rounded-2xl p-6 shadow-sm space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1E2E50]">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-emerald-400" />
-                  Enter Payment &amp; Bank Teller Specifics
-                </h3>
-                <span className="text-[11px] font-mono text-slate-400">Term 1 • 2025/2026</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#1E2E50] gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-emerald-400" />
+                    Enter Payment &amp; Bank Teller Specifics
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Select target academic term to credit tuition fees or settle past arrears.
+                  </p>
+                </div>
+
+                {/* Term & Session Switcher Inside Payment Box */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <select
+                    value={selectedSession}
+                    onChange={(e) => {
+                      setSelectedSession(e.target.value);
+                      setAmountPaying('');
+                    }}
+                    className="bg-[#0D1527] border border-[#203258] rounded-xl px-2.5 py-1.5 text-xs text-white font-bold focus:outline-none"
+                  >
+                    <option value="2025/2026">2025/2026</option>
+                    <option value="2024/2025">2024/2025</option>
+                  </select>
+
+                  <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTerm('first');
+                        setAmountPaying('');
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        selectedTerm === 'first'
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      1st Term
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTerm('second');
+                        setAmountPaying('');
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        selectedTerm === 'second'
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      2nd Term
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTerm('third');
+                        setAmountPaying('');
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                        selectedTerm === 'third'
+                          ? 'bg-emerald-600 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      3rd Term
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <form onSubmit={handleProcessPayment} className="space-y-4 text-xs">
@@ -548,33 +786,40 @@ export default function BursarPaymentPage() {
                       </span>
                       <input
                         type="number"
-                        min="1000"
-                        max={currentBalance || 999999}
+                        min="500"
+                        max={currentBalance > 0 ? currentBalance : 999999}
                         required
                         value={amountPaying}
                         onChange={(e) => setAmountPaying(e.target.value === '' ? '' : Number(e.target.value))}
                         className="w-full bg-[#0D1527] border border-[#203258] rounded-xl pl-8 pr-4 py-2.5 text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
-                        placeholder="e.g. 20000"
+                        placeholder={currentBalance > 0 ? `e.g. ${Math.min(currentBalance, 20000)}` : 'Account Cleared'}
+                        disabled={currentBalance === 0}
                       />
                     </div>
-                    <div className="flex gap-2 mt-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setAmountPaying(currentBalance)}
-                        className="text-[10px] text-emerald-400 hover:underline font-bold"
-                      >
-                        Fill Full Balance (₦{currentBalance.toLocaleString()})
-                      </button>
-                      {currentBalance > 10000 && (
+                    {currentBalance > 0 ? (
+                      <div className="flex gap-2 mt-1.5">
                         <button
                           type="button"
-                          onClick={() => setAmountPaying(Math.round(currentBalance / 2))}
-                          className="text-[10px] text-slate-400 hover:text-white"
+                          onClick={() => setAmountPaying(currentBalance)}
+                          className="text-[10px] text-emerald-400 hover:underline font-bold"
                         >
-                          50% Instalment
+                          Fill Full Balance (₦{currentBalance.toLocaleString()})
                         </button>
-                      )}
-                    </div>
+                        {currentBalance > 10000 && (
+                          <button
+                            type="button"
+                            onClick={() => setAmountPaying(Math.round(currentBalance / 2))}
+                            className="text-[10px] text-slate-400 hover:text-white"
+                          >
+                            50% Instalment
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-emerald-400 font-bold block mt-1">
+                        ✓ No outstanding balance for this term.
+                      </span>
+                    )}
                   </div>
 
                   <div>
@@ -610,21 +855,53 @@ export default function BursarPaymentPage() {
                   </p>
                 </div>
 
-                {/* Outcome Simulation Bar */}
+                {/* Outcome Simulation Bar: Accurately displays status before & during typing */}
                 <div
                   className={`p-4 rounded-xl border transition ${
-                    willBeCleared
+                    numericAmount === 0
+                      ? currentBalance === 0
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                        : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                      : willBeCleared
                       ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                      : 'bg-[#0D1527] border-[#203258] text-slate-300'
+                      : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
                   }`}
                 >
-                  {willBeCleared ? (
+                  {numericAmount === 0 ? (
+                    currentBalance === 0 ? (
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                        <div>
+                          <strong className="block font-bold text-emerald-300">
+                            FULL CLEARANCE ACHIEVED (₦0.00 BALANCE)
+                          </strong>
+                          <span className="text-[11px] text-emerald-400/80">
+                            This student has cleared all fees for {selectedTerm === 'first' ? '1st Term' : selectedTerm === 'second' ? '2nd Term' : '3rd Term'}. Academic report card is unlocked.
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+                        <div>
+                          <strong className="block font-bold text-rose-300">
+                            OUTSTANDING DEBT: ₦{currentBalance.toLocaleString()}.00 — REPORT CARD WITHHELD
+                          </strong>
+                          <span className="text-[11px] text-rose-400/80">
+                            Student result remains locked until settled. Enter payment amount above to record remittance.
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  ) : willBeCleared ? (
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                       <div>
-                        <strong className="block font-bold text-emerald-300">FULL CLEARANCE TRIGGERED</strong>
+                        <strong className="block font-bold text-emerald-300">
+                          FULL CLEARANCE TRIGGERED (₦0.00 BALANCE)
+                        </strong>
                         <span className="text-[11px] text-emerald-400/80">
-                          Balance ₦0.00: Student portal will immediately unlock report card view.
+                          Recording this payment of ₦{numericAmount.toLocaleString()} will immediately unlock terminal report card view on student portal.
                         </span>
                       </div>
                     </div>
@@ -632,9 +909,11 @@ export default function BursarPaymentPage() {
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
                       <div>
-                        <strong className="block font-bold text-white">Partial Payment Logged</strong>
-                        <span className="text-[11px] text-slate-400">
-                          ₦{simulatedRemaining.toLocaleString()}.00 remaining. Essential levies will be cleared first.
+                        <strong className="block font-bold text-amber-300">
+                          PARTIAL PAYMENT LOGGED (₦{simulatedRemaining.toLocaleString()}.00 REMAINING)
+                        </strong>
+                        <span className="text-[11px] text-amber-300/80">
+                          Essential levies cleared first. Report card remains withheld until full balance is satisfied.
                         </span>
                       </div>
                     </div>
@@ -644,7 +923,7 @@ export default function BursarPaymentPage() {
                 <div className="pt-2 flex justify-end">
                   <button
                     type="submit"
-                    disabled={processing || !amountPaying || Number(amountPaying) <= 0}
+                    disabled={processing || !amountPaying || Number(amountPaying) <= 0 || currentBalance === 0}
                     className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition flex items-center gap-2 disabled:opacity-50"
                   >
                     <Receipt className="w-4 h-4" />
@@ -743,7 +1022,7 @@ export default function BursarPaymentPage() {
               </div>
 
               {/* Student & Account Dossier Box */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-500 block">Student Name</span>
                   <strong className="text-slate-900 font-black">{recentReceipt.studentName}</strong>
@@ -755,6 +1034,12 @@ export default function BursarPaymentPage() {
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-500 block">Class &amp; Wing</span>
                   <span className="text-slate-800 font-bold">{recentReceipt.classArm}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Academic Session &amp; Term</span>
+                  <span className="text-emerald-900 font-bold block">
+                    {recentReceipt.session || '2025/2026'} • {recentReceipt.term === 'first' ? '1st Term' : recentReceipt.term === 'second' ? '2nd Term' : '3rd Term'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-500 block">Channel Reference</span>
@@ -868,9 +1153,15 @@ export default function BursarPaymentPage() {
 
                 <div className="text-right">
                   <div className="font-signature text-base text-emerald-950 font-bold italic tracking-wider">
-                    Alhaji Yusuf Adeyemi (FCA)
+                    {recentReceipt.wing?.toLowerCase().includes('primary') || recentReceipt.wing?.toLowerCase().includes('nursery')
+                      ? 'Hajia M. O. Adebayo'
+                      : 'Alhaji Yusuf Adeyemi (FCA)'}
                   </div>
-                  <div className="text-[10px] font-bold text-slate-600 uppercase">School Bursar &amp; Accounts Officer</div>
+                  <div className="text-[10px] font-bold text-slate-600 uppercase">
+                    {recentReceipt.wing?.toLowerCase().includes('primary') || recentReceipt.wing?.toLowerCase().includes('nursery')
+                      ? 'Bursar — Nursery & Primary Wing'
+                      : 'Bursar — Secondary College & Boarding'}
+                  </div>
                 </div>
               </div>
             </div>

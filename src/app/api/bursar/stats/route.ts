@@ -6,12 +6,14 @@ export async function GET(request: Request) {
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     const { searchParams } = new URL(request.url);
     const wingFilter = searchParams.get('wing')?.toLowerCase();
+    const sessionFilter = searchParams.get('session') || '2025/2026';
+    const termFilter = searchParams.get('term')?.toLowerCase();
 
     if (hasSupabase) {
       try {
         const supabase = getAdminClient();
 
-        // 1. Fetch total payments with wing link
+        // 1. Fetch total payments with wing link, session, and term
         const { data: payments } = await supabase
           .from('payments')
           .select(`
@@ -19,12 +21,14 @@ export async function GET(request: Request) {
             payment_date,
             method,
             channel_reference,
+            session,
+            term,
             students (
               classes (wing, class_name)
             )
           `);
 
-        // 2. Fetch clearance counts with wing link
+        // 2. Fetch clearance counts with wing link, session, and term
         const { data: clearances } = await supabase
           .from('student_fee_clearance')
           .select(`
@@ -32,6 +36,8 @@ export async function GET(request: Request) {
             balance,
             total_billed,
             total_paid,
+            session,
+            term,
             students (
               classes (wing, class_name)
             )
@@ -39,6 +45,18 @@ export async function GET(request: Request) {
 
         let safeClearances = clearances || [];
         let safePayments = payments || [];
+
+        // Filter by Session
+        if (sessionFilter) {
+          safeClearances = safeClearances.filter((c: any) => (c.session || '2025/2026') === sessionFilter);
+          safePayments = safePayments.filter((p: any) => (p.session || '2025/2026') === sessionFilter);
+        }
+
+        // Filter by Term
+        if (termFilter && termFilter !== 'all') {
+          safeClearances = safeClearances.filter((c: any) => (c.term || 'first') === termFilter);
+          safePayments = safePayments.filter((p: any) => (p.term || 'first') === termFilter);
+        }
 
         if (wingFilter === 'primary') {
           safeClearances = safeClearances.filter((c: any) => {

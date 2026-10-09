@@ -6,11 +6,13 @@ export async function GET(request: Request) {
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     const { searchParams } = new URL(request.url);
     const wingFilter = searchParams.get('wing')?.toLowerCase();
+    const sessionFilter = searchParams.get('session') || '2025/2026';
+    const termFilter = searchParams.get('term')?.toLowerCase();
 
     if (hasSupabase) {
       try {
         const supabase = getAdminClient();
-        const { data: defaulters, error } = await supabase
+        let query = supabase
           .from('student_fee_clearance')
           .select(`
             id,
@@ -18,6 +20,8 @@ export async function GET(request: Request) {
             total_paid,
             balance,
             is_cleared,
+            session,
+            term,
             students (
               id,
               admission_no,
@@ -30,6 +34,13 @@ export async function GET(request: Request) {
           `)
           .eq('is_cleared', false)
           .gt('balance', 0)
+          .eq('session', sessionFilter);
+
+        if (termFilter && termFilter !== 'all') {
+          query = query.eq('term', termFilter);
+        }
+
+        const { data: defaulters, error } = await query
           .order('balance', { ascending: false });
 
         if (!error && defaulters) {

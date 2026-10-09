@@ -32,6 +32,8 @@ interface BursarStats {
 export default function BursarDashboardPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeWing, setActiveWing] = useState<'all' | 'primary' | 'secondary'>('all');
+  const [selectedSession, setSelectedSession] = useState('2025/2026');
+  const [selectedTerm, setSelectedTerm] = useState<'first' | 'second' | 'third' | 'all'>('first');
   const [stats, setStats] = useState<BursarStats>({
     totalCollected: 0,
     totalBilled: 0,
@@ -62,15 +64,20 @@ export default function BursarDashboardPage() {
       .catch(() => {});
   }, []);
 
-  // 2. Load stats & tellers filtered by active wing
+  // 2. Load stats & tellers filtered by active wing, session, and term
   useEffect(() => {
     async function loadBursarData() {
       setLoading(true);
       try {
-        const wingParam = activeWing !== 'all' ? `?wing=${activeWing}` : '';
+        const wingParam = activeWing !== 'all' ? `wing=${activeWing}` : '';
+        const sessionParam = `session=${selectedSession}`;
+        const termParam = selectedTerm !== 'all' ? `term=${selectedTerm}` : '';
+        const query = [wingParam, sessionParam, termParam].filter(Boolean).join('&');
+        const qStr = query ? `?${query}` : '';
+
         const [statsRes, paymentsRes] = await Promise.all([
-          fetch(`/api/bursar/stats${wingParam}`).then((r) => r.json()).catch(() => null),
-          fetch(`/api/bursar/payments${wingParam}`).then((r) => r.json()).catch(() => null),
+          fetch(`/api/bursar/stats${qStr}`).then((r) => r.json()).catch(() => null),
+          fetch(`/api/bursar/payments${qStr}`).then((r) => r.json()).catch(() => null),
         ]);
 
         if (statsRes?.success) {
@@ -96,7 +103,7 @@ export default function BursarDashboardPage() {
     }
 
     loadBursarData();
-  }, [activeWing]);
+  }, [activeWing, selectedSession, selectedTerm]);
 
   return (
     <div className="p-6 space-y-6 max-w-7xl w-full mx-auto font-sans">
@@ -116,13 +123,81 @@ export default function BursarDashboardPage() {
           </h1>
           <p className="text-xs text-slate-400 mt-1 max-w-xl">
             Live database dashboard: Track tuition collections, log incoming tellers, and issue stamped clearance receipts for{' '}
-            <strong className="text-emerald-400">
-              {activeWing === 'primary' ? 'Nursery & Primary School' : activeWing === 'secondary' ? 'Secondary College & Boarding' : 'all school branches'}
+            <strong className="text-white">
+              {selectedTerm === 'all'
+                ? 'All Terms'
+                : selectedTerm === 'first'
+                ? '1st Term'
+                : selectedTerm === 'second'
+                ? '2nd Term'
+                : '3rd Term'}{' '}
+              ({selectedSession})
             </strong>.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
+          {/* Session Selector */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+            <span className="text-[10px] font-bold text-slate-400 px-2 uppercase">Session:</span>
+            <select
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className="bg-transparent text-white text-xs font-bold px-2 py-1 focus:outline-none cursor-pointer"
+            >
+              <option value="2025/2026" className="bg-[#0D1527] text-white">2025/2026</option>
+              <option value="2024/2025" className="bg-[#0D1527] text-white">2024/2025</option>
+            </select>
+          </div>
+
+          {/* Term Switcher */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('first')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'first'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              1st Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('second')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'second'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              2nd Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('third')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'third'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              3rd Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                selectedTerm === 'all'
+                  ? 'bg-emerald-600 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              All
+            </button>
+          </div>
+
           {/* Interactive Wing Switcher for Chief Bursar / All-Wings Admin */}
           {(currentUser?.wing === 'all' || !currentUser?.wing) && (
             <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">

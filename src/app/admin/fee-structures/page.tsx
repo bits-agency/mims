@@ -38,15 +38,16 @@ export default function SuperAdminFeeStructuresPage() {
     accountNumber: '',
     status: '',
   });
+  const [selectedTerm, setSelectedTerm] = useState<'first' | 'second' | 'third'>('first');
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const loadData = async () => {
+  const loadData = async (termToLoad: string = selectedTerm) => {
     try {
       const [userRes, feeRes] = await Promise.all([
         fetch('/api/auth/me'),
-        fetch('/api/bursar/fee-structures'),
+        fetch(`/api/bursar/fee-structures?term=${termToLoad}`),
       ]);
 
       const userData = await userRes.json();
@@ -67,8 +68,8 @@ export default function SuperAdminFeeStructuresPage() {
   };
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData(selectedTerm);
+  }, [selectedTerm]);
 
   const isSuper = !!currentUser?.isSuperAdmin;
 
@@ -128,13 +129,13 @@ export default function SuperAdminFeeStructuresPage() {
       const res = await fetch('/api/bursar/fee-structures', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ structures: updated }),
+        body: JSON.stringify({ term: selectedTerm, structures: updated }),
       });
       const data = await res.json();
       if (data.success) {
         setStructures(updated);
         setEditingLevel(null);
-        setSaveStatus('Fee structure & levy breakdown saved successfully.');
+        setSaveStatus(`Fee structure for ${selectedTerm === 'first' ? 'First' : selectedTerm === 'second' ? 'Second' : 'Third'} Term saved successfully.`);
       } else {
         setErrorMessage(data.error || 'Failed to update fee structures.');
       }
@@ -427,16 +428,68 @@ export default function SuperAdminFeeStructuresPage() {
 
       {/* Multi-Levy Structures Section */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#1E2E50]">
           <div>
             <h2 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-blue-400" />
-              Academic Levels, Itemized Levies &amp; Tariffs
+              Academic Levels, Itemized Levies &amp; Termly Tariffs
             </h2>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Edit individual fee items, add custom levies (Medicals, Exams, Quran Tahfeez, etc.), and observe automatic grand total updates.
+              Super Admin Control: Customize distinct fee tariffs for First Term, Second Term, or Promotional Third Term.
             </p>
           </div>
+
+          {/* Interactive Term Switcher */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('first')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                selectedTerm === 'first'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              1st Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('second')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                selectedTerm === 'second'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              2nd Term
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTerm('third')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                selectedTerm === 'third'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              3rd Term
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-slate-400 bg-[#0E1729] p-3 rounded-xl border border-[#1C2C4E]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>
+              Configuring active fees for:{' '}
+              <strong className="text-white">
+                {selectedTerm === 'first' ? 'First Term (Harmattan Session)' : selectedTerm === 'second' ? 'Second Term (Lent Session)' : 'Third Term (Promotional Session)'}
+              </strong>
+            </span>
+          </div>
+          <span className="text-[11px] text-emerald-400 font-semibold">
+            {structures.length} Level Fee Schedules
+          </span>
         </div>
 
         <div className="grid grid-cols-1 gap-6">
