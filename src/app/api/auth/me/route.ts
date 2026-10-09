@@ -49,6 +49,7 @@ export async function GET() {
         userId: session.userId,
         email: session.email,
         role: session.role,
+        wing: session.wing || 'all',
         isSuperAdmin,
         fullName: session.fullName,
         username: session.username,

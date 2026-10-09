@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const { searchParams } = new URL(request.url);
+    const wingFilter = searchParams.get('wing')?.toLowerCase();
 
     if (hasSupabase) {
       try {
@@ -23,7 +25,7 @@ export async function GET() {
               lastname,
               guardian_name,
               guardian_phone,
-              classes (class_name, section)
+              classes (class_name, section, wing)
             )
           `)
           .eq('is_cleared', false)
@@ -31,7 +33,20 @@ export async function GET() {
           .order('balance', { ascending: false });
 
         if (!error && defaulters) {
-          return NextResponse.json({ success: true, defaulters, source: 'supabase_database' });
+          let filtered = defaulters;
+          if (wingFilter === 'primary') {
+            filtered = defaulters.filter((d: any) => {
+              const w = d.students?.classes?.wing?.toLowerCase() || '';
+              return w.includes('primary') || w.includes('nursery');
+            });
+          } else if (wingFilter === 'secondary') {
+            filtered = defaulters.filter((d: any) => {
+              const w = d.students?.classes?.wing?.toLowerCase() || '';
+              return w.includes('secondary');
+            });
+          }
+
+          return NextResponse.json({ success: true, defaulters: filtered, wing: wingFilter || 'all', source: 'supabase_database' });
         }
       } catch (err) {
         console.warn('Defaulters DB query fallback:', err);

@@ -5,6 +5,9 @@ export async function GET(request: Request) {
   try {
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+    const { searchParams } = new URL(request.url);
+    const wingFilter = searchParams.get('wing')?.toLowerCase();
+
     if (hasSupabase) {
       try {
         const supabase = getAdminClient();
@@ -20,14 +23,27 @@ export async function GET(request: Request) {
             guardian_name,
             guardian_phone,
             guardian_email,
-            classes (id, class_name, section),
+            classes (id, class_name, section, wing),
             student_fee_clearance (is_cleared, balance, total_billed, total_paid)
           `)
           .not('class_id', 'is', null)
           .order('admission_no', { ascending: true });
 
         if (!error && students) {
-          return NextResponse.json({ success: true, students, source: 'supabase_database' });
+          let filtered = students;
+          if (wingFilter === 'primary') {
+            filtered = students.filter((s: any) => {
+              const w = s.classes?.wing?.toLowerCase() || '';
+              return w.includes('primary') || w.includes('nursery');
+            });
+          } else if (wingFilter === 'secondary') {
+            filtered = students.filter((s: any) => {
+              const w = s.classes?.wing?.toLowerCase() || '';
+              return w.includes('secondary');
+            });
+          }
+
+          return NextResponse.json({ success: true, students: filtered, source: 'supabase_database' });
         }
       } catch (err) {
         console.warn('Students DB query fallback:', err);

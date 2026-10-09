@@ -15,15 +15,37 @@ import {
 } from 'lucide-react';
 
 export default function BursarStudentsLedgerPage() {
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeWing, setActiveWing] = useState<'all' | 'primary' | 'secondary'>('all');
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<'All' | 'Cleared' | 'Owing'>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // 1. Fetch current user to determine default wing
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.authenticated && data?.user) {
+          setCurrentUser(data.user);
+          if (data.user.wing === 'primary') {
+            setActiveWing('primary');
+          } else if (data.user.wing === 'secondary') {
+            setActiveWing('secondary');
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // 2. Load students filtered by active wing
   useEffect(() => {
     async function loadStudents() {
+      setLoading(true);
       try {
-        const res = await fetch('/api/admin/students');
+        const wingParam = activeWing !== 'all' ? `?wing=${activeWing}` : '';
+        const res = await fetch(`/api/admin/students${wingParam}`);
         const data = await res.json();
         if (data?.success && data.students) {
           setStudents(data.students);
@@ -35,7 +57,7 @@ export default function BursarStudentsLedgerPage() {
       }
     }
     loadStudents();
-  }, []);
+  }, [activeWing]);
 
   const filteredStudents = students.filter((student) => {
     const name = `${student.firstname || ''} ${student.lastname || ''}`.toLowerCase();
@@ -62,6 +84,13 @@ export default function BursarStudentsLedgerPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-2">
+            {activeWing === 'primary'
+              ? 'Nursery & Primary Wing Ledger'
+              : activeWing === 'secondary'
+              ? 'Secondary College & Boarding Ledger'
+              : 'Consolidated Fee Ledger (All Campuses)'}
+          </div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             Master Student Fee Ledger
           </h1>
@@ -70,20 +99,61 @@ export default function BursarStudentsLedgerPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/bursar/defaulters"
-            className="px-4 py-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-xs transition flex items-center gap-1.5"
-          >
-            <AlertTriangle className="w-4 h-4 text-rose-400" /> Defaulters Broadsheet
-          </Link>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {/* Wing Switcher for Chief Bursar */}
+          {(currentUser?.wing === 'all' || !currentUser?.wing) && (
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+              <button
+                type="button"
+                onClick={() => setActiveWing('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'all'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                All Wings
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveWing('primary')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'primary'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Primary
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveWing('secondary')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'secondary'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Secondary
+              </button>
+            </div>
+          )}
 
-          <Link
-            href="/bursar/payments"
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition border border-emerald-400/20 flex items-center gap-1.5"
-          >
-            <Receipt className="w-4 h-4" /> Log Payment
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/bursar/defaulters"
+              className="px-4 py-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold text-xs transition flex items-center gap-1.5"
+            >
+              <AlertTriangle className="w-4 h-4 text-rose-400" /> Defaulters Broadsheet
+            </Link>
+
+            <Link
+              href="/bursar/payments"
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition border border-emerald-400/20 flex items-center gap-1.5"
+            >
+              <Receipt className="w-4 h-4" /> Log Payment
+            </Link>
+          </div>
         </div>
       </div>
 

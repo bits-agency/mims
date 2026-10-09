@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const { searchParams } = new URL(request.url);
+    const wingFilter = searchParams.get('wing')?.toLowerCase();
 
     if (hasSupabase) {
       try {
@@ -23,14 +25,27 @@ export async function GET() {
               firstname,
               lastname,
               category,
-              classes (class_name, section)
+              classes (class_name, section, wing)
             )
           `)
           .order('payment_date', { ascending: false })
           .limit(50);
 
         if (!error && payments) {
-          return NextResponse.json({ success: true, payments, source: 'supabase_database' });
+          let filtered = payments;
+          if (wingFilter === 'primary') {
+            filtered = payments.filter((p: any) => {
+              const w = p.students?.classes?.wing?.toLowerCase() || '';
+              return w.includes('primary') || w.includes('nursery');
+            });
+          } else if (wingFilter === 'secondary') {
+            filtered = payments.filter((p: any) => {
+              const w = p.students?.classes?.wing?.toLowerCase() || '';
+              return w.includes('secondary');
+            });
+          }
+
+          return NextResponse.json({ success: true, payments: filtered, wing: wingFilter || 'all', source: 'supabase_database' });
         }
       } catch (err) {
         console.warn('Payments DB query fallback:', err);

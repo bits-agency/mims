@@ -11,19 +11,42 @@ import {
   Phone,
   Receipt,
   CheckCircle,
-  Inbox
+  Inbox,
+  Sparkles
 } from 'lucide-react';
 
 export default function BursarDefaultersPage() {
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeWing, setActiveWing] = useState<'all' | 'primary' | 'secondary'>('all');
   const [defaulters, setDefaulters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // 1. Fetch current user to determine default wing
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.authenticated && data?.user) {
+          setCurrentUser(data.user);
+          if (data.user.wing === 'primary') {
+            setActiveWing('primary');
+          } else if (data.user.wing === 'secondary') {
+            setActiveWing('secondary');
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // 2. Load defaulters filtered by active wing
   useEffect(() => {
     async function loadDefaulters() {
+      setLoading(true);
       try {
-        const res = await fetch('/api/bursar/defaulters');
+        const wingParam = activeWing !== 'all' ? `?wing=${activeWing}` : '';
+        const res = await fetch(`/api/bursar/defaulters${wingParam}`);
         const data = await res.json();
         if (data?.success && data.defaulters) {
           setDefaulters(data.defaulters);
@@ -35,7 +58,7 @@ export default function BursarDefaultersPage() {
       }
     }
     loadDefaulters();
-  }, []);
+  }, [activeWing]);
 
   const filtered = defaulters.filter((d) => {
     const studentName = `${d.students?.firstname || ''} ${d.students?.lastname || ''}`.toLowerCase();
@@ -65,6 +88,14 @@ export default function BursarDefaultersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            {activeWing === 'primary'
+              ? 'Nursery & Primary Defaulters Desk'
+              : activeWing === 'secondary'
+              ? 'Secondary College & Boarding Defaulters'
+              : 'Consolidated Defaulters Broadsheet (All Campuses)'}
+          </div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             Debtors &amp; Fee Defaulters Desk
           </h1>
@@ -73,12 +104,53 @@ export default function BursarDefaultersPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => window.print()}
-          className="px-4 py-2.5 rounded-xl bg-[#182645] hover:bg-[#203259] text-slate-200 font-bold text-xs transition border border-[#23355A] flex items-center gap-1.5 self-start sm:self-auto"
-        >
-          <Printer className="w-4 h-4" /> Print Debtors Broadsheet
-        </button>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {/* Wing Switcher for Chief Bursar */}
+          {(currentUser?.wing === 'all' || !currentUser?.wing) && (
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+              <button
+                type="button"
+                onClick={() => setActiveWing('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'all'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                All Wings
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveWing('primary')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'primary'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Primary
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveWing('secondary')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'secondary'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Secondary
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2.5 rounded-xl bg-[#182645] hover:bg-[#203259] text-slate-200 font-bold text-xs transition border border-[#23355A] flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            <Printer className="w-4 h-4" /> Print Debtors Broadsheet
+          </button>
+        </div>
       </div>
 
       {/* Financial Warning Summary Card */}

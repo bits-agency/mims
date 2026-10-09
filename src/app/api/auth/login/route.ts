@@ -75,6 +75,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid username/email or password' }, { status: 401 });
     }
 
+    // Determine bursar wing scope if applicable
+    let bursarWing: 'primary' | 'secondary' | 'all' = 'all';
+    if (user.role === 'bursar') {
+      const identStr = `${user.email || ''} ${user.username || ''} ${user.full_name || ''}`.toLowerCase();
+      if (identStr.includes('primary')) {
+        bursarWing = 'primary';
+      } else if (identStr.includes('secondary')) {
+        bursarWing = 'secondary';
+      }
+    }
+
     // Create session token with real user payload
     const token = await createSessionToken({
       userId: user.id,
@@ -83,6 +94,7 @@ export async function POST(request: Request) {
       fullName: user.full_name,
       username: user.username,
       status: user.status,
+      wing: bursarWing,
     });
 
     await setSessionCookie(token);
@@ -100,6 +112,7 @@ export async function POST(request: Request) {
         fullName: user.full_name,
         email: user.email,
         role: user.role,
+        wing: bursarWing,
         status: user.status,
       },
       redirectUrl,

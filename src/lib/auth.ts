@@ -12,6 +12,7 @@ export interface SessionPayload {
   fullName: string;
   username: string;
   status: string;
+  wing?: 'primary' | 'secondary' | 'all';
   exp: number;
 }
 

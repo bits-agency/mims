@@ -41,6 +41,8 @@ interface StudentAccount {
 }
 
 export default function BursarPaymentPage() {
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeWing, setActiveWing] = useState<'all' | 'primary' | 'secondary'>('all');
   const [students, setStudents] = useState<StudentAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,12 +56,32 @@ export default function BursarPaymentPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
 
+  // 1. Fetch current user to determine default wing
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.authenticated && data?.user) {
+          setCurrentUser(data.user);
+          if (data.user.wing === 'primary') {
+            setActiveWing('primary');
+          } else if (data.user.wing === 'secondary') {
+            setActiveWing('secondary');
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // 2. Fetch students filtered by active wing
   useEffect(() => {
     async function loadStudents() {
+      setLoading(true);
       try {
-        const res = await fetch('/api/admin/students');
+        const wingParam = activeWing !== 'all' ? `?wing=${activeWing}` : '';
+        const res = await fetch(`/api/admin/students${wingParam}`);
         const data = await res.json();
-        if (data?.success && data.students && data.students.length > 0) {
+        if (data?.success && data.students) {
           const mapped: StudentAccount[] = data.students.map((s: any) => {
             const clr = s.student_fee_clearance?.[0];
             const wing = s.classes?.wing || (s.classes?.class_name?.toLowerCase().includes('primary') ? 'Primary' : 'Senior Secondary');
@@ -80,7 +102,13 @@ export default function BursarPaymentPage() {
             };
           });
           setStudents(mapped);
-          // Do not auto-select anyone so the page loads cleanly with the search bar ready
+
+          // If a student is currently selected but is no longer in the filtered list, reset selection
+          setSelectedStudent((prev) => {
+            if (!prev) return null;
+            const exists = mapped.find((m) => m.id === prev.id);
+            return exists || null;
+          });
         }
       } catch (err) {
         console.error('Failed to load students for payment entry:', err);
@@ -89,7 +117,7 @@ export default function BursarPaymentPage() {
       }
     }
     loadStudents();
-  }, []);
+  }, [activeWing]);
 
   const handleSelectStudent = (student: StudentAccount) => {
     setSelectedStudent(student);
@@ -234,6 +262,14 @@ export default function BursarPaymentPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            {activeWing === 'primary'
+              ? 'Nursery & Primary Wing Desk'
+              : activeWing === 'secondary'
+              ? 'Secondary College & Boarding Desk'
+              : 'Consolidated Bursary Desk (All Campuses)'}
+          </div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             Record Fee Payment &amp; Issue Official Receipt
           </h1>
@@ -242,9 +278,50 @@ export default function BursarPaymentPage() {
           </p>
         </div>
 
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold self-start sm:self-auto">
-          <ShieldCheck className="w-4 h-4" />
-          Automatic Academic Result Unlock Active
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
+          {/* Wing Switcher for Chief Bursar */}
+          {(currentUser?.wing === 'all' || !currentUser?.wing) && (
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+              <button
+                type="button"
+                onClick={() => setActiveWing('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'all'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                All Wings
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveWing('primary')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'primary'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Primary
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveWing('secondary')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'secondary'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Secondary
+              </button>
+            </div>
+          )}
+
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold self-start sm:self-auto">
+            <ShieldCheck className="w-4 h-4" />
+            Clearance Receipt Generator
+          </div>
         </div>
       </div>
 

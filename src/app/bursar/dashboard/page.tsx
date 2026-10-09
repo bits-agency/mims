@@ -30,6 +30,8 @@ interface BursarStats {
 }
 
 export default function BursarDashboardPage() {
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeWing, setActiveWing] = useState<'all' | 'primary' | 'secondary'>('all');
   const [stats, setStats] = useState<BursarStats>({
     totalCollected: 0,
     totalBilled: 0,
@@ -43,12 +45,32 @@ export default function BursarDashboardPage() {
   const [recentTellers, setRecentTellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 1. Load user profile to detect assigned wing
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.authenticated && data?.user) {
+          setCurrentUser(data.user);
+          if (data.user.wing === 'primary') {
+            setActiveWing('primary');
+          } else if (data.user.wing === 'secondary') {
+            setActiveWing('secondary');
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // 2. Load stats & tellers filtered by active wing
   useEffect(() => {
     async function loadBursarData() {
+      setLoading(true);
       try {
+        const wingParam = activeWing !== 'all' ? `?wing=${activeWing}` : '';
         const [statsRes, paymentsRes] = await Promise.all([
-          fetch('/api/bursar/stats').then((r) => r.json()).catch(() => null),
-          fetch('/api/bursar/payments').then((r) => r.json()).catch(() => null),
+          fetch(`/api/bursar/stats${wingParam}`).then((r) => r.json()).catch(() => null),
+          fetch(`/api/bursar/payments${wingParam}`).then((r) => r.json()).catch(() => null),
         ]);
 
         if (statsRes?.success) {
@@ -74,7 +96,7 @@ export default function BursarDashboardPage() {
     }
 
     loadBursarData();
-  }, []);
+  }, [activeWing]);
 
   return (
     <div className="p-6 space-y-6 max-w-7xl w-full mx-auto font-sans">
@@ -83,29 +105,77 @@ export default function BursarDashboardPage() {
         <div>
           <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-2">
             <Sparkles className="w-3.5 h-3.5" />
-            Bursary Financial Operations
+            {activeWing === 'primary'
+              ? 'Nursery & Primary Bursary Desk'
+              : activeWing === 'secondary'
+              ? 'Secondary College & Boarding Bursary Desk'
+              : 'Consolidated Bursary Desk (All Campuses)'}
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
             Revenue &amp; Fee Clearance Desk
           </h1>
           <p className="text-xs text-slate-400 mt-1 max-w-xl">
-            Live database dashboard: Track tuition collections, log incoming tellers, and issue stamped clearance receipts.
+            Live database dashboard: Track tuition collections, log incoming tellers, and issue stamped clearance receipts for{' '}
+            <strong className="text-emerald-400">
+              {activeWing === 'primary' ? 'Nursery & Primary School' : activeWing === 'secondary' ? 'Secondary College & Boarding' : 'all school branches'}
+            </strong>.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <Link
-            href="/bursar/payments"
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition border border-emerald-400/20 flex items-center gap-1.5"
-          >
-            <Receipt className="w-4 h-4" /> Record New Payment
-          </Link>
-          <Link
-            href="/bursar/defaulters"
-            className="px-4 py-2.5 rounded-xl bg-[#182645] hover:bg-[#203259] text-slate-300 font-bold text-xs border border-[#23375E] transition flex items-center gap-1.5"
-          >
-            <AlertTriangle className="w-4 h-4 text-amber-400" /> Defaulters ({stats.defaulterCount})
-          </Link>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
+          {/* Interactive Wing Switcher for Chief Bursar / All-Wings Admin */}
+          {(currentUser?.wing === 'all' || !currentUser?.wing) && (
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[#0A1120] border border-[#1E2E50]">
+              <button
+                type="button"
+                onClick={() => setActiveWing('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'all'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                All Wings
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveWing('primary')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'primary'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Primary
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveWing('secondary')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  activeWing === 'secondary'
+                    ? 'bg-emerald-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Secondary
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/bursar/payments"
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition border border-emerald-400/20 flex items-center gap-1.5"
+            >
+              <Receipt className="w-4 h-4" /> Record Payment
+            </Link>
+            <Link
+              href="/bursar/defaulters"
+              className="px-4 py-2.5 rounded-xl bg-[#182645] hover:bg-[#203259] text-slate-300 font-bold text-xs border border-[#23375E] transition flex items-center gap-1.5"
+            >
+              <AlertTriangle className="w-4 h-4 text-amber-400" /> Defaulters ({stats.defaulterCount})
+            </Link>
+          </div>
         </div>
       </div>
 

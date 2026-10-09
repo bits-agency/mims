@@ -91,6 +91,18 @@ export default function BursarPortalLayout({
             </div>
           </Link>
 
+          {/* Active Wing / Desk Indicator */}
+          <div className="mx-4 my-2.5 px-3 py-1.5 rounded-xl bg-[#111C33] border border-[#1E2E50] flex items-center justify-between shadow-xs">
+            <span className="text-[10px] uppercase font-bold text-slate-400">Desk</span>
+            <span className="text-[11px] font-bold text-emerald-400">
+              {currentUser?.wing === 'primary'
+                ? 'Nursery & Primary'
+                : currentUser?.wing === 'secondary'
+                ? 'Secondary College'
+                : 'All Wings (Chief)'}
+            </span>
+          </div>
+
           {/* Navigation Items */}
           <nav className="p-4 space-y-1 text-xs font-semibold">
             {bursarNavItems.map((item) => {
@@ -123,7 +135,13 @@ export default function BursarPortalLayout({
               </div>
               <div className="truncate max-w-[120px]">
                 <p className="text-xs font-bold text-white leading-tight truncate">{displayName}</p>
-                <p className="text-[10px] text-emerald-400 truncate">Chief Bursar</p>
+                <p className="text-[10px] text-emerald-400 truncate">
+                  {currentUser?.wing === 'primary'
+                    ? 'Bursar (Primary)'
+                    : currentUser?.wing === 'secondary'
+                    ? 'Bursar (Secondary)'
+                    : 'Chief Bursar'}
+                </p>
               </div>
             </div>
             <button
@@ -253,7 +271,11 @@ export default function BursarPortalLayout({
                 Official School Bursary Console
               </span>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-extrabold uppercase">
-                Official Accounts Sync
+                {currentUser?.wing === 'primary'
+                  ? 'Nursery & Primary Desk'
+                  : currentUser?.wing === 'secondary'
+                  ? 'Secondary College Desk'
+                  : 'Consolidated Accounts Sync'}
               </span>
             </div>
           </div>

@@ -1,25 +1,65 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const { searchParams } = new URL(request.url);
+    const wingFilter = searchParams.get('wing')?.toLowerCase();
 
     if (hasSupabase) {
       try {
         const supabase = getAdminClient();
 
-        // 1. Fetch total payments
+        // 1. Fetch total payments with wing link
         const { data: payments } = await supabase
           .from('payments')
-          .select('amount_paid, payment_date, method, channel_reference');
+          .select(`
+            amount_paid,
+            payment_date,
+            method,
+            channel_reference,
+            students (
+              classes (wing, class_name)
+            )
+          `);
 
-        // 2. Fetch clearance counts
+        // 2. Fetch clearance counts with wing link
         const { data: clearances } = await supabase
           .from('student_fee_clearance')
-          .select('is_cleared, balance, total_billed, total_paid');
+          .select(`
+            is_cleared,
+            balance,
+            total_billed,
+            total_paid,
+            students (
+              classes (wing, class_name)
+            )
+          `);
 
-        const safeClearances = clearances || [];
+        let safeClearances = clearances || [];
+        let safePayments = payments || [];
+
+        if (wingFilter === 'primary') {
+          safeClearances = safeClearances.filter((c: any) => {
+            const w = c.students?.classes?.wing?.toLowerCase() || '';
+            return w.includes('primary') || w.includes('nursery');
+          });
+          safePayments = safePayments.filter((p: any) => {
+            const w = p.students?.classes?.wing?.toLowerCase() || '';
+            return w.includes('primary') || w.includes('nursery');
+          });
+        } else if (wingFilter === 'secondary') {
+          safeClearances = safeClearances.filter((c: any) => {
+            const w = c.students?.classes?.wing?.toLowerCase() || '';
+            return w.includes('secondary');
+          });
+          safePayments = safePayments.filter((p: any) => {
+            const w = p.students?.classes?.wing?.toLowerCase() || '';
+            return w.includes('secondary');
+          });
+        }
+
         const totalCollected = safeClearances.reduce((acc, c) => acc + Number(c.total_paid || 0), 0);
         const totalBilled = safeClearances.reduce((acc, c) => acc + Number(c.total_billed || 0), 0);
         const totalOutstanding = safeClearances.reduce((acc, c) => acc + Number(c.balance || 0), 0);
@@ -28,13 +68,14 @@ export async function GET() {
 
         return NextResponse.json({
           success: true,
+          wing: wingFilter || 'all',
           totalCollected,
           totalBilled,
           totalOutstanding,
           clearanceRate: Math.round(clearanceRate * 10) / 10,
           clearedCount,
           defaulterCount: safeClearances.length - clearedCount,
-          paymentsCount: payments?.length || 0,
+          paymentsCount: safePayments.length,
           source: 'supabase_database',
         });
       } catch (dbErr) {
