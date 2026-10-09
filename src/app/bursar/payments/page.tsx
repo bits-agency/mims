@@ -17,7 +17,10 @@ import {
   Inbox,
   Check,
   Clock,
-  X
+  X,
+  Lock,
+  History,
+  FileText
 } from 'lucide-react';
 import {
   allocatePaymentToLevies,
@@ -68,6 +71,8 @@ export default function BursarPaymentPage() {
   const [recentReceipt, setRecentReceipt] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
 
   // 1. Fetch current user to determine default wing
   useEffect(() => {
@@ -86,7 +91,28 @@ export default function BursarPaymentPage() {
       .catch(() => {});
   }, []);
 
-  // 2. Fetch students filtered by active wing
+  // 2. Fetch recent verified payment transactions
+  const fetchRecentTransactions = async () => {
+    setLoadingTransactions(true);
+    try {
+      const wingParam = activeWing !== 'all' ? `&wing=${activeWing}` : '';
+      const res = await fetch(`/api/bursar/payments?session=${selectedSession}&term=${selectedTerm}${wingParam}`);
+      const data = await res.json();
+      if (data?.success && data.payments) {
+        setRecentTransactions(data.payments);
+      }
+    } catch (err) {
+      console.warn('Failed to load recent transactions:', err);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecentTransactions();
+  }, [activeWing, selectedSession, selectedTerm]);
+
+  // 3. Fetch students filtered by active wing
   useEffect(() => {
     async function loadStudents() {
       setLoading(true);
@@ -128,6 +154,8 @@ export default function BursarPaymentPage() {
             const stdQuery = params.get('student');
             const termQuery = params.get('term') as 'first' | 'second' | 'third' | null;
             const sessQuery = params.get('session');
+            const viewReceiptParam = params.get('viewReceipt') === 'true';
+
             if (sessQuery) setSelectedSession(sessQuery);
             if (termQuery && ['first', 'second', 'third'].includes(termQuery)) {
               setSelectedTerm(termQuery);
@@ -142,6 +170,12 @@ export default function BursarPaymentPage() {
               if (matched) {
                 setSelectedStudent(matched);
                 setSearchQuery(`${matched.name} (${matched.admissionNo})`);
+                if (viewReceiptParam) {
+                  // Auto open verified receipt for this student
+                  setTimeout(() => {
+                    handleRetrieveReceiptForStudent(matched, termQuery || selectedTerm);
+                  }, 100);
+                }
               }
             }
           }
@@ -226,11 +260,102 @@ export default function BursarPaymentPage() {
     ? allocatePaymentToLevies(selectedStudent.levies, currentTermInfo.paid + numericAmount)
     : null;
 
+  // Retrieve and preview official stamped receipt for any student and term
+  const handleRetrieveReceiptForStudent = (
+    student: StudentAccount,
+    term: 'first' | 'second' | 'third' = selectedTerm,
+    specificPayment?: any
+  ) => {
+    const termInfo = getTermInfo(student, term);
+    const bankDetails = getBankAccountForWing(student.wing);
+    const allocationResult = allocatePaymentToLevies(student.levies, termInfo.paid);
+
+    const matchingTx = specificPayment || recentTransactions.find(
+      (tx) => tx.student_id === student.id && (tx.term || 'first') === term
+    );
+
+    const cleanReceiptNo = matchingTx?.receipt_no || `MIMS/REC/2026/${student.admissionNo.replace(/[^0-9]/g, '').slice(-4) || '9120'}`;
+    const paymentDateStr = matchingTx?.payment_date
+      ? new Date(matchingTx.payment_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    setRecentReceipt({
+      receiptNo: cleanReceiptNo,
+      admissionNo: student.admissionNo,
+      studentName: student.name,
+      classArm: student.classArm,
+      wing: student.wing,
+      bankAccount: bankDetails,
+      previousPaid: 0,
+      amountThisPayment: matchingTx ? Number(matchingTx.amount_paid) : termInfo.paid,
+      cumulativePaid: termInfo.paid,
+      totalFee: termInfo.billed,
+      balanceAfter: termInfo.balance,
+      cleared: termInfo.isCleared,
+      allocatedLevies: allocationResult.allocated,
+      session: matchingTx?.session || selectedSession,
+      term: matchingTx?.term || term,
+      paymentMethod: matchingTx?.method ? (
+        matchingTx.method === 'bank_transfer' ? 'Official Direct Bank Transfer' :
+        matchingTx.method === 'bank_teller' ? 'Official Bank Teller Deposit' :
+        matchingTx.method === 'pos' ? 'School Bursary POS Terminal' :
+        matchingTx.method === 'cash' ? 'Direct Cash Receipt' : matchingTx.method
+      ) : 'Official Direct Bank Transfer',
+      channelRef: matchingTx?.channel_reference || `NIP-TX-${student.admissionNo.replace(/[^a-zA-Z0-9]/g, '')}`,
+      timestamp: matchingTx?.payment_date
+        ? new Date(matchingTx.payment_date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        : new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      dateFormatted: paymentDateStr,
+    });
+    setReceiptGenerated(true);
+  };
+
+  const handleReprintTransaction = (tx: any) => {
+    const matched = students.find((s) => s.id === tx.student_id || s.admissionNo === tx.students?.admission_no);
+    if (matched) {
+      handleRetrieveReceiptForStudent(matched, (tx.term || 'first') as any, tx);
+    } else {
+      const wing = tx.students?.classes?.wing || 'Primary';
+      const levies = getLeviesForStudentClass(tx.students?.classes?.class_name);
+      const bankDetails = getBankAccountForWing(wing);
+      const paid = Number(tx.amount_paid || 0);
+      const allocationResult = allocatePaymentToLevies(levies, paid);
+
+      setRecentReceipt({
+        receiptNo: tx.receipt_no,
+        admissionNo: tx.students?.admission_no || 'N/A',
+        studentName: `${tx.students?.firstname || ''} ${tx.students?.lastname || ''}`.trim() || 'Student',
+        classArm: `${tx.students?.classes?.class_name || ''} ${tx.students?.classes?.section ? '(' + tx.students?.classes?.section + ')' : ''}`.trim(),
+        wing: wing,
+        bankAccount: bankDetails,
+        previousPaid: 0,
+        amountThisPayment: paid,
+        cumulativePaid: paid,
+        totalFee: 55000,
+        balanceAfter: Math.max(0, 55000 - paid),
+        cleared: paid >= 55000,
+        allocatedLevies: allocationResult.allocated,
+        session: tx.session || selectedSession,
+        term: tx.term || selectedTerm,
+        paymentMethod: tx.method === 'bank_transfer' ? 'Official Direct Bank Transfer' : (tx.method || 'Bank Transfer'),
+        channelRef: tx.channel_reference || 'NIP-TX-REF',
+        timestamp: new Date(tx.payment_date || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        dateFormatted: new Date(tx.payment_date || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+      });
+      setReceiptGenerated(true);
+    }
+  };
+
   const handleProcessPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent || !amountPaying || amountPaying <= 0) return;
+    if (currentBalance === 0) {
+      setErrorMessage('Security Lockdown: Account is already fully settled (₦0.00 balance). Payment form is locked to prevent duplicate entries.');
+      return;
+    }
 
     setProcessing(true);
+    setErrorMessage(null);
     try {
       const bankDetails = getBankAccountForWing(selectedStudent.wing);
       const cumPaid = currentTermInfo.paid + Number(amountPaying);
@@ -252,6 +377,11 @@ export default function BursarPaymentPage() {
       });
 
       const data = await res.json();
+      if (!res.ok || !data?.success) {
+        setErrorMessage(data?.error || 'Payment processing failed. Please check ledger details.');
+        return;
+      }
+
       if (data?.success && data.receipt) {
         const newBalance = Math.max(0, currentTermInfo.billed - cumPaid);
         const isNowCleared = newBalance === 0;
@@ -306,9 +436,13 @@ export default function BursarPaymentPage() {
         setSelectedStudent(updatedStudent);
         setStudents((prev) => prev.map((s) => (s.id === selectedStudent.id ? updatedStudent : s)));
         setAmountPaying('');
+
+        // Refresh recent transaction audit trail
+        fetchRecentTransactions();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Payment processing failed:', err);
+      setErrorMessage(err?.message || 'Payment processing encountered an unexpected network error.');
     } finally {
       setProcessing(false);
     }
@@ -774,29 +908,66 @@ export default function BursarPaymentPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleProcessPayment} className="space-y-4 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                      Amount Paying Now (₦)
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400">
-                        ₦
-                      </span>
-                      <input
-                        type="number"
-                        min="500"
-                        max={currentBalance > 0 ? currentBalance : 999999}
-                        required
-                        value={amountPaying}
-                        onChange={(e) => setAmountPaying(e.target.value === '' ? '' : Number(e.target.value))}
-                        className="w-full bg-[#0D1527] border border-[#203258] rounded-xl pl-8 pr-4 py-2.5 text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
-                        placeholder={currentBalance > 0 ? `e.g. ${Math.min(currentBalance, 20000)}` : 'Account Cleared'}
-                        disabled={currentBalance === 0}
-                      />
+              {currentBalance === 0 ? (
+                <div className="p-8 rounded-2xl bg-gradient-to-b from-emerald-950/40 to-[#0B132B] border-2 border-emerald-500/40 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+                    <ShieldCheck className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-xs uppercase tracking-wider border border-emerald-500/30">
+                      <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                      Anti-Tamper Audit Lock Active
                     </div>
-                    {currentBalance > 0 ? (
+                    <h3 className="text-base font-black text-white tracking-tight">
+                      Account Fully Settled &amp; Verified (₦0.00 Balance)
+                    </h3>
+                    <p className="text-xs text-slate-300 max-w-lg mx-auto leading-relaxed">
+                      This student has cleared 100% of their invoiced fees (₦{currentTermInfo.billed.toLocaleString()}.00) for{' '}
+                      <strong className="text-white">
+                        {selectedTerm === 'first' ? '1st Term' : selectedTerm === 'second' ? '2nd Term' : '3rd Term'} ({selectedSession})
+                      </strong>.
+                      Terminal report card and academic clearance have been automatically unlocked. To ensure financial compliance and prevent accidental duplicate postings, payment inputs are strictly locked for this term.
+                    </p>
+                  </div>
+                  <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleRetrieveReceiptForStudent(selectedStudent, selectedTerm)}
+                      className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/40 transition flex items-center gap-2 cursor-pointer active:scale-95"
+                    >
+                      <Printer className="w-4 h-4" />
+                      Retrieve &amp; Print Official Stamped Receipt
+                    </button>
+                    <Link
+                      href="/bursar/students"
+                      className="px-5 py-3 rounded-xl bg-[#182645] hover:bg-[#203259] text-slate-300 hover:text-white text-xs font-bold transition border border-[#23355A]"
+                    >
+                      View Student Ledger
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleProcessPayment} className="space-y-4 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Amount Paying Now (₦)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400">
+                          ₦
+                        </span>
+                        <input
+                          type="number"
+                          min="500"
+                          max={currentBalance > 0 ? currentBalance : 999999}
+                          required
+                          value={amountPaying}
+                          onChange={(e) => setAmountPaying(e.target.value === '' ? '' : Number(e.target.value))}
+                          className="w-full bg-[#0D1527] border border-[#203258] rounded-xl pl-8 pr-4 py-2.5 text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
+                          placeholder={currentBalance > 0 ? `e.g. ${Math.min(currentBalance, 20000)}` : 'Account Cleared'}
+                        />
+                      </div>
                       <div className="flex gap-2 mt-1.5">
                         <button
                           type="button"
@@ -815,72 +986,52 @@ export default function BursarPaymentPage() {
                           </button>
                         )}
                       </div>
-                    ) : (
-                      <span className="text-[10px] text-emerald-400 font-bold block mt-1">
-                        ✓ No outstanding balance for this term.
-                      </span>
-                    )}
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                        Payment Channel / Instrument
+                      </label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="w-full bg-[#0D1527] border border-[#203258] rounded-xl px-3.5 py-2.5 text-white font-medium focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="Official Direct Bank Transfer">Direct Bank Transfer (NIP / Mobile)</option>
+                        <option value="Official Bank Teller Deposit">Bank Teller Deposit Slip</option>
+                        <option value="Point of Sale (POS) Terminal">School Bursary POS Terminal</option>
+                        <option value="Cash at Bursary Counter">Direct Cash Receipt at Bursary</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div>
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                      Payment Channel / Instrument
+                      Bank Teller Number / Transaction Reference / NIP Session ID
                     </label>
-                    <select
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="w-full bg-[#0D1527] border border-[#203258] rounded-xl px-3.5 py-2.5 text-white font-medium focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="Official Direct Bank Transfer">Direct Bank Transfer (NIP / Mobile)</option>
-                      <option value="Official Bank Teller Deposit">Bank Teller Deposit Slip</option>
-                      <option value="Point of Sale (POS) Terminal">School Bursary POS Terminal</option>
-                      <option value="Cash at Bursary Counter">Direct Cash Receipt at Bursary</option>
-                    </select>
+                    <input
+                      type="text"
+                      value={referenceNo}
+                      onChange={(e) => setReferenceNo(e.target.value)}
+                      placeholder="e.g. TEL/2026/89412 or NIP-TX-987654"
+                      className="w-full bg-[#0D1527] border border-[#203258] rounded-xl px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Leave blank to auto-generate verified electronic channel reference.
+                    </p>
                   </div>
-                </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                    Bank Teller Number / Transaction Reference / NIP Session ID
-                  </label>
-                  <input
-                    type="text"
-                    value={referenceNo}
-                    onChange={(e) => setReferenceNo(e.target.value)}
-                    placeholder="e.g. TEL/2026/89412 or NIP-TX-987654"
-                    className="w-full bg-[#0D1527] border border-[#203258] rounded-xl px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Leave blank to auto-generate verified electronic channel reference.
-                  </p>
-                </div>
-
-                {/* Outcome Simulation Bar: Accurately displays status before & during typing */}
-                <div
-                  className={`p-4 rounded-xl border transition ${
-                    numericAmount === 0
-                      ? currentBalance === 0
+                  {/* Outcome Simulation Bar */}
+                  <div
+                    className={`p-4 rounded-xl border transition ${
+                      numericAmount === 0
+                        ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                        : willBeCleared
                         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                        : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-                      : willBeCleared
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                      : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
-                  }`}
-                >
-                  {numericAmount === 0 ? (
-                    currentBalance === 0 ? (
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                        <div>
-                          <strong className="block font-bold text-emerald-300">
-                            FULL CLEARANCE ACHIEVED (₦0.00 BALANCE)
-                          </strong>
-                          <span className="text-[11px] text-emerald-400/80">
-                            This student has cleared all fees for {selectedTerm === 'first' ? '1st Term' : selectedTerm === 'second' ? '2nd Term' : '3rd Term'}. Academic report card is unlocked.
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
+                        : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                    }`}
+                  >
+                    {numericAmount === 0 ? (
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
                         <div>
@@ -892,45 +1043,45 @@ export default function BursarPaymentPage() {
                           </span>
                         </div>
                       </div>
-                    )
-                  ) : willBeCleared ? (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                      <div>
-                        <strong className="block font-bold text-emerald-300">
-                          FULL CLEARANCE TRIGGERED (₦0.00 BALANCE)
-                        </strong>
-                        <span className="text-[11px] text-emerald-400/80">
-                          Recording this payment of ₦{numericAmount.toLocaleString()} will immediately unlock terminal report card view on student portal.
-                        </span>
+                    ) : willBeCleared ? (
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                        <div>
+                          <strong className="block font-bold text-emerald-300">
+                            FULL CLEARANCE TRIGGERED (₦0.00 BALANCE)
+                          </strong>
+                          <span className="text-[11px] text-emerald-400/80">
+                            Recording this payment of ₦{numericAmount.toLocaleString()} will immediately unlock terminal report card view on student portal.
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
-                      <div>
-                        <strong className="block font-bold text-amber-300">
-                          PARTIAL PAYMENT LOGGED (₦{simulatedRemaining.toLocaleString()}.00 REMAINING)
-                        </strong>
-                        <span className="text-[11px] text-amber-300/80">
-                          Essential levies cleared first. Report card remains withheld until full balance is satisfied.
-                        </span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                        <div>
+                          <strong className="block font-bold text-amber-300">
+                            PARTIAL PAYMENT LOGGED (₦{simulatedRemaining.toLocaleString()}.00 REMAINING)
+                          </strong>
+                          <span className="text-[11px] text-amber-300/80">
+                            Essential levies cleared first. Report card remains withheld until full balance is satisfied.
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
 
-                <div className="pt-2 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={processing || !amountPaying || Number(amountPaying) <= 0 || currentBalance === 0}
-                    className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition flex items-center gap-2 disabled:opacity-50"
-                  >
-                    <Receipt className="w-4 h-4" />
-                    {processing ? 'Processing Receipt...' : 'Record Payment & Generate Official Receipt'}
-                  </button>
-                </div>
-              </form>
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={processing || !amountPaying || Number(amountPaying) <= 0 || currentBalance === 0}
+                      className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-900/30 transition flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
+                    >
+                      <Receipt className="w-4 h-4" />
+                      {processing ? 'Processing Receipt...' : 'Record Payment & Generate Official Receipt'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>
@@ -952,7 +1103,7 @@ export default function BursarPaymentPage() {
                   key={s.id}
                   type="button"
                   onClick={() => handleSelectStudent(s)}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-600/15 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 transition flex items-center gap-2 group"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600/15 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 transition flex items-center gap-2 group cursor-pointer"
                 >
                   <User className="w-3.5 h-3.5 text-emerald-400 group-hover:text-white" />
                   <span>Load {s.name} ({s.admissionNo})</span>
@@ -963,26 +1114,121 @@ export default function BursarPaymentPage() {
         </div>
       )}
 
+      {/* Retrievable Receipts & Audit Trail Section */}
+      <div className="bg-[#111C33] border border-[#1E2E50] rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#1E2E50] gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <History className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">
+                Verified Receipts &amp; Financial Audit Log
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Retrieve and reprint official stamped slips for {selectedTerm === 'first' ? '1st Term' : selectedTerm === 'second' ? '2nd Term' : '3rd Term'} ({selectedSession}).
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 self-start sm:self-auto">
+            {recentTransactions.length} Verified Receipt{recentTransactions.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        {loadingTransactions ? (
+          <div className="p-8 text-center text-slate-400 text-xs">
+            Loading recent verified transactions...
+          </div>
+        ) : recentTransactions.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#1E2E50] bg-[#0E172A] text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="py-2.5 px-3">Receipt No</th>
+                  <th className="py-2.5 px-3">Student Name</th>
+                  <th className="py-2.5 px-3">Admission No</th>
+                  <th className="py-2.5 px-3">Class Arm</th>
+                  <th className="py-2.5 px-3">Channel Ref</th>
+                  <th className="py-2.5 px-3 text-right">Amount (₦)</th>
+                  <th className="py-2.5 px-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1A284A]">
+                {recentTransactions.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-[#152340] transition">
+                    <td className="py-2.5 px-3 font-mono font-bold text-emerald-400">
+                      {tx.receipt_no}
+                    </td>
+                    <td className="py-2.5 px-3 font-semibold text-white">
+                      {tx.students?.firstname} {tx.students?.lastname}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-slate-400">
+                      {tx.students?.admission_no || 'N/A'}
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-300">
+                      {tx.students?.classes?.class_name} {tx.students?.classes?.section ? `(${tx.students?.classes?.section})` : ''}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400">
+                      {tx.channel_reference}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">
+                      ₦{Number(tx.amount_paid).toLocaleString()}.00
+                    </td>
+                    <td className="py-2.5 px-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleReprintTransaction(tx)}
+                        className="px-3 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold transition border border-emerald-500/30 flex items-center gap-1.5 ml-auto cursor-pointer"
+                        title="Reprint Official Stamped Slip"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        Reprint Slip
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-8 text-center text-slate-400 space-y-2">
+            <Inbox className="w-8 h-8 mx-auto text-slate-500" />
+            <p className="text-xs">
+              No payment receipts logged for this session and term yet.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Official Parchment Printable Receipt Modal (Clean, Dedicated Paper Layout) */}
       {receiptGenerated && recentReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
-          <div className="w-full max-w-2xl bg-white text-slate-900 rounded-3xl shadow-2xl p-6 sm:p-8 relative my-8 border border-slate-200">
-            {/* Action Bar (Hidden on print) */}
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 no-print">
-              <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                Official Electronic Financial Slip
-              </span>
+        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-6 pb-20 bg-black/80 backdrop-blur-md animate-in fade-in overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white text-slate-900 rounded-3xl shadow-2xl p-6 sm:p-8 relative my-4 border border-slate-200">
+            {/* Sticky Action Bar at the top (Hidden on print) */}
+            <div className="sticky top-0 bg-white/95 backdrop-blur z-30 pb-3 pt-1 mb-4 border-b border-slate-200 no-print flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                  Official Electronic Financial Slip
+                </span>
+                <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                  {recentReceipt.receiptNo}
+                </span>
+              </div>
 
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={handlePrintOnlyReceipt}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md hover:shadow-lg cursor-pointer active:scale-95"
                 >
                   <Printer className="w-4 h-4" /> Print Official Slip
                 </button>
                 <button
+                  type="button"
                   onClick={() => setReceiptGenerated(false)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                  title="Close receipt preview"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1163,6 +1409,29 @@ export default function BursarPaymentPage() {
                       : 'Bursar — Secondary College & Boarding'}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Bottom Action Bar (Hidden on print) */}
+            <div className="flex items-center justify-between pt-5 mt-5 border-t border-slate-200 no-print">
+              <span className="text-xs text-slate-500">
+                School Accounting Copy &amp; Student Duplicate
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReceiptGenerated(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrintOnlyReceipt}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md cursor-pointer active:scale-95"
+                >
+                  <Printer className="w-4 h-4" /> Print Official Slip
+                </button>
               </div>
             </div>
           </div>

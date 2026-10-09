@@ -338,12 +338,26 @@ export default function BursarStudentsLedgerPage() {
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        <Link
-                          href={`/bursar/payments?student=${std.admission_no}&session=${selectedSession}&term=${selectedTerm}`}
-                          className="px-3 py-1.5 rounded-lg bg-[#182645] hover:bg-[#203259] text-slate-200 text-xs font-bold transition border border-[#23355A]"
-                        >
-                          Credit
-                        </Link>
+                        <div className="flex items-center justify-end gap-2">
+                          {(clr.isCleared || clr.paid > 0) && (
+                            <Link
+                              href={`/bursar/payments?student=${std.admission_no}&session=${selectedSession}&term=${selectedTerm}&viewReceipt=true`}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold transition border border-emerald-500/30 flex items-center gap-1.5"
+                              title="Retrieve & Print Stamped Official Slip"
+                            >
+                              <Receipt className="w-3.5 h-3.5" />
+                              Receipt
+                            </Link>
+                          )}
+                          {!clr.isCleared && (
+                            <Link
+                              href={`/bursar/payments?student=${std.admission_no}&session=${selectedSession}&term=${selectedTerm}`}
+                              className="px-3 py-1.5 rounded-lg bg-[#182645] hover:bg-[#203259] text-slate-200 text-xs font-bold transition border border-[#23355A]"
+                            >
+                              Credit
+                            </Link>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
