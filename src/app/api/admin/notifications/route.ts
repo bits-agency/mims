@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { requireAuth } from '@/lib/guard';
 
 export interface AdminNotification {
   id: string;
@@ -13,6 +14,9 @@ export interface AdminNotification {
 
 export async function GET() {
   try {
+    const auth = await requireAuth(['admin', 'super_admin']);
+    if (!auth.authorized) return auth.response;
+
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     const notifications: AdminNotification[] = [];
 

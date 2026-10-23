@@ -1,30 +1,60 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { verifyPassword, createSessionToken, setSessionCookie } from '@/lib/auth';
+import { loginSchema } from '@/lib/validation';
 
 export async function POST(request: Request) {
   try {
-    const { identifier, password } = await request.json();
+    const rawBody = await request.json().catch(() => ({}));
+    const parseResult = loginSchema.safeParse(rawBody);
 
-    if (!identifier || !password) {
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Email or username and password are required' },
+        { error: parseResult.error.errors[0]?.message || 'Invalid input credentials.' },
         { status: 400 }
       );
     }
+
+    const { identifier, password } = parseResult.data;
 
     // Check if Supabase credentials are configured
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!hasSupabase) {
       return NextResponse.json(
-        { error: 'Database service key not configured in .env.local. Please provide SUPABASE_SERVICE_ROLE_KEY to authenticate live production users.' },
+        { error: 'Database service key not configured in .env.local. SUPABASE_SERVICE_ROLE_KEY is required.' },
         { status: 503 }
       );
     }
 
     const supabase = getAdminClient();
-    const cleanIdent = identifier.trim();
+
+    // Sanitize identifier to prevent PostgREST filter injection (remove commas, parentheses, quotes)
+    const cleanIdent = identifier.trim().replace(/[(),"\\]/g, '');
+    const clientIp =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+
+    // 0. Rate limiting check (max 5 failed attempts in past 15 minutes)
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    try {
+      const { count: failCount } = await supabase
+        .from('login_attempts')
+        .select('*', { count: 'exact', head: true })
+        .eq('identifier', cleanIdent.toLowerCase())
+        .eq('success', false)
+        .gte('created_at', fifteenMinutesAgo);
+
+      if (failCount && failCount >= 5) {
+        return NextResponse.json(
+          { error: 'Too many failed login attempts. For security reasons, please wait 15 minutes before retrying.' },
+          { status: 429 }
+        );
+      }
+    } catch {
+      // If login_attempts table is not yet migrated, continue safely
+    }
 
     // 1. Search by email or username in users table
     let { data: user } = await supabase
@@ -55,38 +85,60 @@ export async function POST(request: Request) {
     }
 
     if (!user) {
+      // Record failed attempt
+      try {
+        await supabase.from('login_attempts').insert({
+          identifier: cleanIdent.toLowerCase(),
+          ip: clientIp,
+          success: false,
+        });
+      } catch {}
+
       return NextResponse.json(
-        { error: 'Invalid Admission Number, username/email or password' },
+        { error: 'Invalid Admission Number, username/email or password.' },
         { status: 401 }
       );
     }
 
-    // Check active status
-    if (user.status === 'inactive') {
+    // Check account status
+    if (user.status === 'suspended' || user.status === 'inactive') {
       return NextResponse.json(
-        { error: 'This account has been deactivated. Please contact the school administration.' },
+        { error: 'This account has been deactivated or suspended. Please contact the school administration.' },
         { status: 403 }
       );
     }
 
-    // Verify password against stored hash or fallback check
+    // Verify password against stored hash
     const isMatch = await verifyPassword(password, user.password);
     if (!isMatch) {
-      return NextResponse.json({ error: 'Invalid username/email or password' }, { status: 401 });
+      try {
+        await supabase.from('login_attempts').insert({
+          identifier: cleanIdent.toLowerCase(),
+          ip: clientIp,
+          success: false,
+        });
+      } catch {}
+
+      return NextResponse.json(
+        { error: 'Invalid username/email or password.' },
+        { status: 401 }
+      );
     }
 
-    // Determine bursar wing scope if applicable
-    let bursarWing: 'primary' | 'secondary' | 'all' = 'all';
-    if (user.role === 'bursar') {
-      const identStr = `${user.email || ''} ${user.username || ''} ${user.full_name || ''}`.toLowerCase();
-      if (identStr.includes('primary')) {
-        bursarWing = 'primary';
-      } else if (identStr.includes('secondary')) {
-        bursarWing = 'secondary';
-      }
-    }
+    // Record successful login attempt
+    try {
+      await supabase.from('login_attempts').insert({
+        identifier: cleanIdent.toLowerCase(),
+        ip: clientIp,
+        success: true,
+      });
+    } catch {}
 
-    // Create session token with real user payload
+    // Read bursar wing directly from database column (no heuristics)
+    const userWing: 'primary' | 'secondary' | 'all' =
+      user.wing === 'primary' || user.wing === 'secondary' ? user.wing : 'all';
+
+    // Create signed session token
     const token = await createSessionToken({
       userId: user.id,
       email: user.email,
@@ -94,13 +146,15 @@ export async function POST(request: Request) {
       fullName: user.full_name,
       username: user.username,
       status: user.status,
-      wing: bursarWing,
+      wing: userWing,
+      sessionVersion: user.session_version || 0,
     });
 
     await setSessionCookie(token);
 
+    // Determine redirect
     let redirectUrl = '/students/dashboard';
-    if (user.role === 'admin') redirectUrl = '/admin/dashboard';
+    if (user.role === 'admin' || user.role === 'super_admin') redirectUrl = '/admin/dashboard';
     else if (user.role === 'teacher') redirectUrl = '/teachers/dashboard';
     else if (user.role === 'bursar') redirectUrl = '/bursar/dashboard';
     else if (user.status === 'pending') redirectUrl = '/admissions/status';
@@ -112,7 +166,7 @@ export async function POST(request: Request) {
         fullName: user.full_name,
         email: user.email,
         role: user.role,
-        wing: bursarWing,
+        wing: userWing,
         status: user.status,
       },
       redirectUrl,

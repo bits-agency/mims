@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { SESSION_COOKIE_NAME, verifySessionToken } from './lib/token';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionCookie = request.cookies.get('mims_session')?.value;
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 
   // Protected paths
   const isAdminPath = pathname.startsWith('/admin');
   const isTeacherPath = pathname.startsWith('/teachers');
   const isBursarPath = pathname.startsWith('/bursar');
   const isStudentPath = pathname.startsWith('/students');
-  const isAdmissionsStatusPath = pathname.startsWith('/admissions/status');
+  const isDocsPath = pathname.startsWith('/docs');
 
-  const isProtected = isAdminPath || isTeacherPath || isBursarPath || isStudentPath || isAdmissionsStatusPath;
+  const isProtected = isAdminPath || isTeacherPath || isBursarPath || isStudentPath || isDocsPath;
 
   if (isProtected) {
     if (!sessionCookie) {
@@ -21,43 +22,65 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    try {
-      // Decode payload from session token (format: payloadB64.sigB64)
-      const parts = sessionCookie.split('.');
-      if (parts.length === 2) {
-        const payloadJson = Buffer.from(parts[0], 'base64url').toString('utf-8');
-        const session = JSON.parse(payloadJson);
+    // Cryptographically verify HMAC-SHA256 signature
+    const session = await verifySessionToken(sessionCookie);
 
-        // Check expiry
-        if (session.exp && session.exp < Math.floor(Date.now() / 1000)) {
-          const loginUrl = new URL('/login', request.url);
-          return NextResponse.redirect(loginUrl);
-        }
+    if (!session) {
+      // Forged, malformed, or expired token: kick to login and delete invalid cookie
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      const res = NextResponse.redirect(loginUrl);
+      res.cookies.delete(SESSION_COOKIE_NAME);
+      return res;
+    }
 
-        // Role verification
-        if (isAdminPath && session.role !== 'admin') {
-          return NextResponse.redirect(new URL('/', request.url));
-        }
+    // Check account status
+    if (session.status === 'suspended' || session.status === 'inactive') {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('error', 'deactivated');
+      const res = NextResponse.redirect(loginUrl);
+      res.cookies.delete(SESSION_COOKIE_NAME);
+      return res;
+    }
 
-        if (isTeacherPath && session.role !== 'teacher' && session.role !== 'admin') {
-          return NextResponse.redirect(new URL('/', request.url));
-        }
-
-        if (isBursarPath && session.role !== 'bursar' && session.role !== 'admin') {
-          return NextResponse.redirect(new URL('/', request.url));
-        }
-
-        if (isStudentPath) {
-          if (session.status === 'pending') {
-            return NextResponse.redirect(new URL('/admissions/status', request.url));
-          }
-          if (session.role !== 'student' && session.role !== 'admin') {
-            return NextResponse.redirect(new URL('/', request.url));
-          }
-        }
+    // Role-based authorization
+    if (isAdminPath) {
+      if (session.role !== 'admin' && session.role !== 'super_admin') {
+        return NextResponse.redirect(new URL('/', request.url));
       }
-    } catch {
-      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    if (isTeacherPath) {
+      if (session.role !== 'teacher' && session.role !== 'admin' && session.role !== 'super_admin') {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    }
+
+    if (isBursarPath) {
+      if (session.role !== 'bursar' && session.role !== 'admin' && session.role !== 'super_admin') {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    }
+
+    if (isStudentPath) {
+      if (session.status === 'pending') {
+        return NextResponse.redirect(new URL('/admissions/status', request.url));
+      }
+      if (session.role !== 'student' && session.role !== 'admin' && session.role !== 'super_admin') {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    }
+
+    if (isDocsPath) {
+      // Internal documentation requires authorized school staff or admin
+      const isStaffOrAdmin =
+        session.role === 'admin' ||
+        session.role === 'super_admin' ||
+        session.role === 'bursar' ||
+        session.role === 'teacher';
+      if (!isStaffOrAdmin) {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
     }
   }
 
@@ -70,6 +93,6 @@ export const config = {
     '/bursar/:path*',
     '/teachers/:path*',
     '/students/:path*',
-    '/admissions/status/:path*',
+    '/docs/:path*',
   ],
 };

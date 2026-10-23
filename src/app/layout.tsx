@@ -1,9 +1,15 @@
 import type { Metadata } from 'next';
-import { Instrument_Serif } from 'next/font/google';
+import { Inter, Instrument_Serif } from 'next/font/google';
 import './globals.css';
 
+const inter = Inter({
+  variable: '--font-sans',
+  subsets: ['latin'],
+  display: 'swap',
+});
+
 const instrumentSerif = Instrument_Serif({
-  variable: '--font-custom',
+  variable: '--font-serif',
   subsets: ['latin'],
   weight: ['400'],
   display: 'swap',
@@ -37,7 +43,7 @@ export const metadata: Metadata = {
   publisher: 'MSSN Akure Area Council',
   category: 'Education',
   alternates: {
-    canonical: 'https://mims.sch.ng',
+    canonical: './',
   },
   verification: {
     google: 'elhPZ0jPLyhv39SP-6GUX_RPz_zNh9aKl3wP-CYr5P0',
@@ -140,7 +146,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={`${instrumentSerif.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${instrumentSerif.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>

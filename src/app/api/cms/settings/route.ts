@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import fs from 'fs';
-import path from 'path';
-
-const CAMPUS_DATA_FILE = path.join(process.cwd(), 'data', 'campus_locations.json');
+import { requireAuth, logAudit } from '@/lib/guard';
 
 const DEFAULT_CAMPUSES = [
   {
@@ -26,37 +23,38 @@ const DEFAULT_CAMPUSES = [
   },
 ];
 
-function getSavedCampuses() {
-  try {
-    if (fs.existsSync(CAMPUS_DATA_FILE)) {
-      const raw = fs.readFileSync(CAMPUS_DATA_FILE, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.warn('Could not read campus_locations.json:', e);
-  }
-  return DEFAULT_CAMPUSES;
-}
-
-function saveCampusesToFile(campuses: any[]) {
-  try {
-    const dir = path.dirname(CAMPUS_DATA_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(CAMPUS_DATA_FILE, JSON.stringify(campuses, null, 2), 'utf-8');
-  } catch (e) {
-    console.warn('Could not save campus_locations.json:', e);
-  }
-}
+const DEFAULT_SETTINGS = {
+  school_name: 'MSSN Islamic Model Schools, Akure',
+  motto: 'Knowledge, Faith and Excellent Morals • Al-Birr',
+  accreditation: 'WAEC / NECO / Ondo State Ministry of Education Accredited',
+  bursary_phone: '+234 802 987 6543',
+  admissions_phone: '+234 803 234 5678',
+  principal_phone: '+234 805 112 3344',
+  whatsapp_inquiry: '+234 814 556 7788',
+  general_email: 'info@mimsakure.com',
+  admissions_email: 'admissions@mimsakure.com',
+  bursar_email: 'bursar@mimsakure.com',
+  principal_email: 'principal@mimsakure.com',
+  senior_campus_address: DEFAULT_CAMPUSES[0].address,
+  nursery_primary_address: DEFAULT_CAMPUSES[1].address,
+  campus_locations: DEFAULT_CAMPUSES,
+  campuses: DEFAULT_CAMPUSES,
+  bank_name: 'Official Commercial Bank',
+  account_name: 'MSSN Islamic Model Schools Akure - Operations',
+  account_number: 'To Be Stated by School Management',
+  sort_code: '301001',
+  school_hours: 'Monday - Thursday: 7:30 AM – 3:30 PM',
+  friday_hours: 'Friday: 7:30 AM – 1:00 PM (Jumu\'ah Break)',
+  admin_office_hours: 'Monday - Friday: 8:00 AM – 4:30 PM',
+  visiting_day_schedule: '1st Sunday of Every Month: 10:00 AM – 5:00 PM',
+  facebook_url: 'https://facebook.com/mimsakure',
+  youtube_url: 'https://youtube.com/@mimsakure',
+  whatsapp_channel_url: 'https://whatsapp.com/channel/mimsakure',
+};
 
 export async function GET() {
   try {
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const campuses = getSavedCampuses();
 
     if (hasSupabase) {
       try {
@@ -65,12 +63,14 @@ export async function GET() {
           .from('site_settings')
           .select('*')
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (!error && data) {
+          const campuses = data.campus_locations || DEFAULT_CAMPUSES;
           return NextResponse.json({
             success: true,
             settings: {
+              ...DEFAULT_SETTINGS,
               ...data,
               campus_locations: campuses,
               campuses: campuses,
@@ -79,40 +79,13 @@ export async function GET() {
           });
         }
       } catch (err) {
-        console.warn('CMS settings DB fallback:', err);
+        console.warn('CMS settings DB query error:', err);
       }
     }
 
     return NextResponse.json({
       success: true,
-      settings: {
-        school_name: 'MSSN Islamic Model Schools, Akure',
-        motto: 'Knowledge, Faith and Excellent Morals • Al-Birr',
-        accreditation: 'WAEC / NECO / Ondo State Ministry of Education Accredited',
-        bursary_phone: '+234 802 987 6543',
-        admissions_phone: '+234 803 234 5678',
-        principal_phone: '+234 805 112 3344',
-        whatsapp_inquiry: '+234 814 556 7788',
-        general_email: 'info@mimsakure.com',
-        admissions_email: 'admissions@mimsakure.com',
-        bursar_email: 'bursar@mimsakure.com',
-        principal_email: 'principal@mimsakure.com',
-        senior_campus_address: campuses[0]?.address || 'MSSN Campus Complex, KM 4 Oba-Ile Express Road, Akure, Ondo State',
-        nursery_primary_address: campuses[1]?.address || 'Al-Birr Heights, Off Oba-Adesida Central Boulevard, Akure, Ondo State',
-        campus_locations: campuses,
-        campuses: campuses,
-        bank_name: 'Official Commercial Bank',
-        account_name: 'MSSN Islamic Model Schools Akure - Operations',
-        account_number: 'To Be Stated by School Management',
-        sort_code: '301001',
-        school_hours: 'Monday - Thursday: 7:30 AM – 3:30 PM',
-        friday_hours: 'Friday: 7:30 AM – 1:00 PM (Jumu\'ah Break)',
-        admin_office_hours: 'Monday - Friday: 8:00 AM – 4:30 PM',
-        visiting_day_schedule: '1st Sunday of Every Month: 10:00 AM – 5:00 PM',
-        facebook_url: 'https://facebook.com/mimsakure',
-        youtube_url: 'https://youtube.com/@mimsakure',
-        whatsapp_channel_url: 'https://whatsapp.com/channel/mimsakure',
-      },
+      settings: DEFAULT_SETTINGS,
       source: 'database_defaults',
     });
   } catch (error: unknown) {
@@ -123,46 +96,89 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireAuth(['admin', 'super_admin']);
+    if (!auth.authorized) return auth.response;
+
     const body = await request.json();
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    // Persist dynamic campus locations
-    const rawCampuses = body.campus_locations || body.campuses;
-    if (Array.isArray(rawCampuses) && rawCampuses.length > 0) {
-      saveCampusesToFile(rawCampuses);
-      // Ensure backwards compatible fields are synced
-      if (!body.senior_campus_address && rawCampuses[0]?.address) {
-        body.senior_campus_address = rawCampuses[0].address;
-      }
-      if (!body.nursery_primary_address && rawCampuses[1]?.address) {
-        body.nursery_primary_address = rawCampuses[1].address;
+    if (!hasSupabase) {
+      return NextResponse.json({ error: 'Database service configuration missing.' }, { status: 503 });
+    }
+
+    const supabase = getAdminClient();
+    const { data: existing } = await supabase.from('site_settings').select('id').limit(1).maybeSingle();
+
+    const rawCampuses = body.campus_locations || body.campuses || DEFAULT_CAMPUSES;
+
+    const allowedFields = [
+      'school_name',
+      'motto',
+      'accreditation',
+      'bursary_phone',
+      'admissions_phone',
+      'principal_phone',
+      'whatsapp_inquiry',
+      'general_email',
+      'admissions_email',
+      'bursar_email',
+      'principal_email',
+      'senior_campus_address',
+      'nursery_primary_address',
+      'bank_name',
+      'account_name',
+      'account_number',
+      'sort_code',
+      'school_hours',
+      'friday_hours',
+      'admin_office_hours',
+      'visiting_day_schedule',
+      'facebook_url',
+      'youtube_url',
+      'whatsapp_channel_url',
+    ];
+
+    const dbPayload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+      campus_locations: rawCampuses,
+    };
+
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        dbPayload[field] = body[field];
       }
     }
 
-    if (hasSupabase) {
-      try {
-        const supabase = getAdminClient();
-        const { data: existing } = await supabase.from('site_settings').select('id').limit(1).single();
+    if (existing?.id) {
+      const { error: updErr } = await supabase
+        .from('site_settings')
+        .update(dbPayload)
+        .eq('id', existing.id);
 
-        // Create sanitized payload for database table columns
-        const dbPayload: Record<string, any> = { ...body };
-        // Delete dynamic array field if column isn't in DB yet to avoid PostgreSQL unknown column rejection
-        delete dbPayload.campus_locations;
-        delete dbPayload.campuses;
+      if (updErr) {
+        throw new Error(`Database settings update failed: ${updErr.message}`);
+      }
+    } else {
+      const { error: insErr } = await supabase
+        .from('site_settings')
+        .insert(dbPayload);
 
-        if (existing?.id) {
-          await supabase.from('site_settings').update({ ...dbPayload, updated_at: new Date().toISOString() }).eq('id', existing.id);
-        } else {
-          await supabase.from('site_settings').insert(dbPayload);
-        }
-
-        return NextResponse.json({ success: true, message: 'Site settings and campus locations updated successfully' });
-      } catch (dbErr) {
-        console.warn('DB update failed, returning confirmation:', dbErr);
+      if (insErr) {
+        throw new Error(`Database settings insert failed: ${insErr.message}`);
       }
     }
 
-    return NextResponse.json({ success: true, message: 'Site settings and campus locations updated successfully' });
+    await logAudit({
+      actorId: auth.session.userId,
+      actorRole: auth.session.role,
+      action: 'cms.settings_updated',
+      entity: 'site_settings',
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Institutional settings and campus details saved to database successfully.',
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });

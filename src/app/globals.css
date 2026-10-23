@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --font-custom: var(--font-custom), 'Instrument Serif', Georgia, serif;
+  --font-serif: var(--font-serif), 'Instrument Serif', Georgia, serif;
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --bg-dark-base: #0B1120;
   --bg-dark-surface: #111C33;
   --bg-dark-card: #15223E;
@@ -12,20 +13,8 @@
 }
 
 html {
-  font-size: 13.5px; /* Compact mobile scale so widgets, tables, and statistics fit seamlessly */
+  font-size: 100%;
   -webkit-text-size-adjust: 100%;
-}
-
-@media (min-width: 640px) {
-  html {
-    font-size: 14.5px;
-  }
-}
-
-@media (min-width: 1024px) {
-  html {
-    font-size: 16px; /* Full desktop proportion */
-  }
 }
 
 html,
@@ -33,8 +22,16 @@ body {
   overflow-x: clip;
   max-width: 100vw;
   width: 100%;
-  font-family: var(--font-custom);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-sans {
+  font-family: var(--font-sans);
 }
 
 /* Custom scrollbars */

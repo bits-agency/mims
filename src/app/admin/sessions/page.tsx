@@ -178,32 +178,41 @@ export default function AdminSessionsPage() {
     if (!targetTerm) return;
 
     const nextState = !targetTerm.resultsReleased;
+    const actionPrompt = nextState
+      ? `Are you sure you want to PUBLISH and RELEASE examination results for ${targetTerm.name} (${targetSession?.sessionName}) to all student portals?`
+      : `Are you sure you want to LOCK and WITHHOLD results for ${targetTerm.name} (${targetSession?.sessionName}) from students?`;
 
-    // Optimistic UI update
-    setSessions((prev) =>
-      prev.map((s) => {
-        if (s.id !== sessionId) return s;
-        return {
-          ...s,
-          terms: s.terms.map((t) => (t.termNumber === termNumber ? { ...t, resultsReleased: nextState } : t)),
-        };
-      })
-    );
-
-    showNotification(
-      `${targetTerm.name} (${targetSession?.sessionName}) results are now ${
-        nextState ? 'RELEASED to all student portals' : 'WITHHELD / LOCKED from student view'
-      }!`
-    );
+    if (!window.confirm(actionPrompt)) return;
 
     try {
-      await fetch('/api/admin/sessions', {
+      const res = await fetch('/api/admin/sessions', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ termId: termId || targetTerm.id, resultsReleased: nextState }),
       });
-    } catch (err) {
-      console.warn('Persist error:', err);
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to update results release status');
+      }
+
+      setSessions((prev) =>
+        prev.map((s) => {
+          if (s.id !== sessionId) return s;
+          return {
+            ...s,
+            terms: s.terms.map((t) => (t.termNumber === termNumber ? { ...t, resultsReleased: nextState } : t)),
+          };
+        })
+      );
+
+      showNotification(
+        `${targetTerm.name} (${targetSession?.sessionName}) results are now ${
+          nextState ? 'RELEASED to all student portals' : 'WITHHELD / LOCKED from student view'
+        }!`
+      );
+    } catch (err: any) {
+      alert(err.message || 'Failed to update result release status.');
     }
   };
 

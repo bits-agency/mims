@@ -1,26 +1,32 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { getSession, verifyPassword, hashPassword } from '@/lib/auth';
+import { verifyPassword, hashPassword } from '@/lib/auth';
+import { requireAuth, logAudit } from '@/lib/guard';
+import { changePasswordSchema } from '@/lib/validation';
 
 export async function POST(request: Request) {
   try {
-    const session = await getSession();
-    if (!session || !session.userId) {
-      return NextResponse.json({ error: 'Unauthorized. Please log in first.' }, { status: 401 });
-    }
+    const auth = await requireAuth();
+    if (!auth.authorized) return auth.response;
 
-    const { currentPassword, newPassword } = await request.json();
+    const rawBody = await request.json().catch(() => ({}));
+    const parseResult = changePasswordSchema.safeParse(rawBody);
 
-    if (!newPassword || newPassword.trim().length < 6) {
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'New password must be at least 6 characters in length.' },
+        { error: parseResult.error.errors[0]?.message || 'Current password and valid new password are required.' },
         { status: 400 }
       );
     }
 
+    const { currentPassword, newPassword } = parseResult.data;
+
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!hasSupabase) {
-      return NextResponse.json({ success: true, message: 'Password updated (local mode)' });
+      return NextResponse.json(
+        { error: 'Database service configuration missing.' },
+        { status: 503 }
+      );
     }
 
     const supabase = getAdminClient();
@@ -28,39 +34,47 @@ export async function POST(request: Request) {
     // Fetch user from DB
     const { data: user, error: fetchError } = await supabase
       .from('users')
-      .select('id, password')
-      .eq('id', session.userId)
+      .select('id, password, session_version')
+      .eq('id', auth.session.userId)
       .single();
 
     if (fetchError || !user) {
       return NextResponse.json({ error: 'User account not found.' }, { status: 404 });
     }
 
-    // If current password provided, verify it
-    if (currentPassword) {
-      const isMatch = await verifyPassword(currentPassword, user.password);
-      if (!isMatch) {
-        return NextResponse.json(
-          { error: 'Current password is incorrect. Please re-enter your existing password.' },
-          { status: 400 }
-        );
-      }
+    // MANDATORY current password verification (cannot be bypassed)
+    const isMatch = await verifyPassword(currentPassword, user.password);
+    if (!isMatch) {
+      return NextResponse.json(
+        { error: 'Current password is incorrect. Please enter your existing password correctly.' },
+        { status: 400 }
+      );
     }
 
-    // Hash and update new password
+    // Hash and update new password + bump session_version to invalidate stolen sessions
     const hashedPassword = await hashPassword(newPassword.trim());
+    const nextSessionVersion = (user.session_version || 0) + 1;
 
     const { error: updateError } = await supabase
       .from('users')
       .update({
         password: hashedPassword,
+        session_version: nextSessionVersion,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', session.userId);
+      .eq('id', auth.session.userId);
 
     if (updateError) {
       throw updateError;
     }
+
+    await logAudit({
+      actorId: auth.session.userId,
+      actorRole: auth.session.role,
+      action: 'user.password_changed',
+      entity: 'user',
+      entityId: auth.session.userId,
+    });
 
     return NextResponse.json({
       success: true,

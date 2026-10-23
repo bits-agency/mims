@@ -1,82 +1,43 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { getSession } from '@/lib/auth';
-import fs from 'fs';
-import path from 'path';
-
-const DATA_FILE = path.join(process.cwd(), 'data', 'announcements.json');
-
-// Helper to ensure data directory and file exist
-function getStoredAnnouncements() {
-  try {
-    if (!fs.existsSync(path.dirname(DATA_FILE))) {
-      fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    }
-    if (!fs.existsSync(DATA_FILE)) {
-      const defaultAnnouncements = [
-        {
-          id: 'anc-1',
-          title: 'Resumption Protocol & Term 1 Orientation',
-          sender: 'Office of the Principal',
-          date: '2026-10-01',
-          category: 'Academic',
-          message: 'All students are expected to report to their assigned class arms promptly at 7:30 AM in complete, neat school uniforms. Morning assembly and orientation will commence at 7:45 AM.',
-          pinned: true,
-          audience: 'students',
-        },
-        {
-          id: 'anc-2',
-          title: 'Weekly Tahfeez & Holy Quran Memorization Review',
-          sender: 'Tahfeez & Spiritual Affairs Unit',
-          date: '2026-10-02',
-          category: 'Spiritual',
-          message: 'The weekly Quranic recitation and memorization assessment for all grades will hold on Thursday mornings before first period. Ensure daily revision of your assigned Surah.',
-          pinned: false,
-          audience: 'students',
-        },
-      ];
-      fs.writeFileSync(DATA_FILE, JSON.stringify(defaultAnnouncements, null, 2), 'utf-8');
-      return defaultAnnouncements;
-    }
-    const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-function saveStoredAnnouncements(list: any[]) {
-  try {
-    if (!fs.existsSync(path.dirname(DATA_FILE))) {
-      fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-    }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(list, null, 2), 'utf-8');
-  } catch (e) {
-    console.error('Failed to write announcements file:', e);
-  }
-}
+import { requireAuth, logAudit } from '@/lib/guard';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const audience = searchParams.get('audience');
 
-    let announcements = getStoredAnnouncements();
-
-    if (audience) {
-      announcements = announcements.filter(
-        (a: any) => a.audience === 'all' || a.audience === audience
-      );
+    const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!hasSupabase) {
+      return NextResponse.json({ success: true, announcements: [] });
     }
 
-    // Sort: pinned first, then newest date
-    announcements.sort((a: any, b: any) => {
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
-    });
+    const supabase = getAdminClient();
+    let query = supabase
+      .from('announcements')
+      .select('id, title, sender, message, category, pinned, audience, created_at')
+      .order('pinned', { ascending: false })
+      .order('created_at', { ascending: false });
 
-    return NextResponse.json({ success: true, announcements });
+    if (audience && audience !== 'all') {
+      query = query.in('audience', ['all', audience]);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const formatted = (data || []).map((a: any) => ({
+      id: a.id,
+      title: a.title,
+      sender: a.sender,
+      date: a.created_at ? a.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+      category: a.category,
+      message: a.message,
+      pinned: a.pinned,
+      audience: a.audience,
+    }));
+
+    return NextResponse.json({ success: true, announcements: formatted });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
@@ -85,13 +46,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getSession();
-    if (!session || (session.role !== 'admin' && session.role !== 'super_admin' && session.role !== 'teacher')) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Staff or Administrator credentials required to broadcast notices.' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAuth(['admin', 'super_admin', 'teacher']);
+    if (!auth.authorized) return auth.response;
 
     const body = await request.json();
     const { title, message, category, pinned, audience } = body;
@@ -101,33 +57,44 @@ export async function POST(request: Request) {
     }
 
     const senderTitle =
-      session.email?.toLowerCase() === 'bamiebot@gmail.com' || session.role === 'super_admin'
+      auth.session.role === 'super_admin'
         ? 'Governing Board / Super Administrator'
-        : session.role === 'teacher'
-        ? `${session.fullName || 'Subject Tutor'} (Faculty Tutor)`
-        : session.fullName
-        ? `${session.fullName} (School Admin)`
+        : auth.session.role === 'teacher'
+        ? `${auth.session.fullName || 'Subject Tutor'} (Faculty Tutor)`
+        : auth.session.fullName
+        ? `${auth.session.fullName} (School Admin)`
         : 'Office of the Principal';
 
-    const newAnnouncement = {
-      id: `anc-${Date.now()}`,
-      title: title.trim(),
-      sender: senderTitle,
-      date: new Date().toISOString().split('T')[0],
-      category: category || 'Academic',
-      message: message.trim(),
-      pinned: !!pinned,
-      audience: audience || 'students',
-    };
+    const supabase = getAdminClient();
+    const { data: inserted, error } = await supabase
+      .from('announcements')
+      .insert({
+        title: title.trim(),
+        message: message.trim(),
+        category: category || 'Academic',
+        pinned: !!pinned,
+        audience: audience || 'students',
+        sender: senderTitle,
+        created_by: auth.session.userId,
+      })
+      .select()
+      .single();
 
-    const currentList = getStoredAnnouncements();
-    const updatedList = [newAnnouncement, ...currentList];
-    saveStoredAnnouncements(updatedList);
+    if (error) throw error;
+
+    await logAudit({
+      actorId: auth.session.userId,
+      actorRole: auth.session.role,
+      action: 'announcement.created',
+      entity: 'announcement',
+      entityId: inserted.id,
+      details: { title: inserted.title, audience: inserted.audience },
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Notice broadcasted to student portal successfully!',
-      announcement: newAnnouncement,
+      message: 'Notice broadcasted to noticeboard successfully.',
+      announcement: inserted,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
@@ -137,13 +104,8 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const session = await getSession();
-    if (!session || (session.role !== 'admin' && session.role !== 'super_admin')) {
-      return NextResponse.json(
-        { error: 'Unauthorized. School Administrator credentials required.' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAuth(['admin', 'super_admin']);
+    if (!auth.authorized) return auth.response;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -152,13 +114,21 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Announcement ID is required.' }, { status: 400 });
     }
 
-    const currentList = getStoredAnnouncements();
-    const updatedList = currentList.filter((a: any) => a.id !== id);
-    saveStoredAnnouncements(updatedList);
+    const supabase = getAdminClient();
+    const { error } = await supabase.from('announcements').delete().eq('id', id);
+    if (error) throw error;
+
+    await logAudit({
+      actorId: auth.session.userId,
+      actorRole: auth.session.role,
+      action: 'announcement.deleted',
+      entity: 'announcement',
+      entityId: id,
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Broadcast notice removed from notice board.',
+      message: 'Broadcast notice removed from noticeboard.',
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';

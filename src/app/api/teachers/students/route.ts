@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { requireAuth } from '@/lib/guard';
 
 export async function GET(request: Request) {
   try {
+    const auth = await requireAuth(['teacher', 'admin', 'super_admin']);
+    if (!auth.authorized) return auth.response;
+
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get('classId');
     const subjectId = searchParams.get('subjectId');
@@ -10,91 +14,64 @@ export async function GET(request: Request) {
     const term = searchParams.get('term') || 'first';
 
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!hasSupabase) {
+      return NextResponse.json({ success: true, students: [], count: 0 });
+    }
 
-    if (hasSupabase) {
-      try {
-        const supabase = getAdminClient();
+    const supabase = getAdminClient();
 
-        let studentQuery = supabase
-          .from('students')
-          .select(`
-            id,
-            admission_no,
-            firstname,
-            lastname,
-            gender,
-            category,
-            photo,
-            class_id,
-            classes (id, class_name, section, wing)
-          `)
-          .order('admission_no', { ascending: true });
+    let studentQuery = supabase
+      .from('students')
+      .select(`
+        id,
+        admission_no,
+        firstname,
+        lastname,
+        gender,
+        category,
+        photo,
+        class_id,
+        classes (id, class_name, section, wing)
+      `)
+      .not('class_id', 'is', null)
+      .order('admission_no', { ascending: true });
 
-        if (classId) {
-          studentQuery = studentQuery.eq('class_id', classId);
-        }
+    if (classId) {
+      studentQuery = studentQuery.eq('class_id', classId);
+    }
 
-        let { data: students, error: studErr } = await studentQuery;
-        if (studErr) throw studErr;
+    const { data: students, error: studErr } = await studentQuery;
+    if (studErr) throw studErr;
 
-        // If class has no enrolled students yet, fallback to all active students for smooth onboarding
-        if (!students || students.length === 0) {
-          const { data: fallbackStudents } = await supabase
-            .from('students')
-            .select(`
-              id,
-              admission_no,
-              firstname,
-              lastname,
-              gender,
-              category,
-              photo,
-              class_id,
-              classes (id, class_name, section, wing)
-            `)
-            .limit(20);
-          students = fallbackStudents || [];
-        }
+    const studentList = students || [];
 
-        let resultsMap: Record<string, any> = {};
-        if (subjectId && students && students.length > 0) {
-          const studentIds = students.map((s) => s.id);
-          const { data: results } = await supabase
-            .from('results')
-            .select('*')
-            .eq('subject_id', subjectId)
-            .eq('session', session)
-            .eq('term', term)
-            .in('student_id', studentIds);
+    let resultsMap: Record<string, any> = {};
+    if (subjectId && studentList.length > 0) {
+      const studentIds = studentList.map((s) => s.id);
+      const { data: results } = await supabase
+        .from('results')
+        .select('*')
+        .eq('subject_id', subjectId)
+        .eq('session', session)
+        .eq('term', term)
+        .in('student_id', studentIds);
 
-          if (results) {
-            results.forEach((r) => {
-              resultsMap[r.student_id] = r;
-            });
-          }
-        }
-
-        const enrichedStudents = (students || []).map((s) => ({
-          ...s,
-          result: resultsMap[s.id] || null,
-        }));
-
-        return NextResponse.json({
-          success: true,
-          students: enrichedStudents,
-          count: enrichedStudents.length,
-          source: 'supabase_database',
+      if (results) {
+        results.forEach((r) => {
+          resultsMap[r.student_id] = r;
         });
-      } catch (dbErr) {
-        console.warn('Teacher students DB error:', dbErr);
       }
     }
 
+    const enrichedStudents = studentList.map((s) => ({
+      ...s,
+      result: resultsMap[s.id] || null,
+    }));
+
     return NextResponse.json({
       success: true,
-      students: [],
-      count: 0,
-      source: 'database_empty',
+      students: enrichedStudents,
+      count: enrichedStudents.length,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';

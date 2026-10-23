@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import { requireAuth } from '@/lib/guard';
 
 export async function POST(request: Request) {
   try {
@@ -7,8 +8,33 @@ export async function POST(request: Request) {
     const file = formData.get('file') as File | null;
     const folder = (formData.get('folder') as string) || 'mims/uploads';
 
+    // Allow prospective students to upload admissions documents, require login for other folders
+    const isAdmissionsUpload = folder.startsWith('mims/admissions') || folder.startsWith('mims/passports');
+    if (!isAdmissionsUpload) {
+      const auth = await requireAuth();
+      if (!auth.authorized) return auth.response;
+    }
+
     if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
+    }
+
+    // Validate mime type (images and pdfs only)
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'Invalid file type. Only JPEG, PNG, WebP images, and PDF documents are permitted.' },
+        { status: 400 }
+      );
+    }
+
+    // Validate file size (max 5MB)
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { error: 'File size exceeds maximum permitted limit of 5 MB.' },
+        { status: 400 }
+      );
     }
 
     // Convert file to base64 data URI

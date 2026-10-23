@@ -6,15 +6,23 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Calculates grade and remark based on total score (0 - 100)
+ * Calculates standardized WAEC / National curriculum grade and remark based on total score (0 - 100)
  */
-export function calculateGrade(total: number): { grade: 'A' | 'B' | 'C' | 'D' | 'E' | 'F'; remark: string } {
-  if (total >= 70) return { grade: 'A', remark: 'Excellent' };
-  if (total >= 60) return { grade: 'B', remark: 'Very Good' };
-  if (total >= 50) return { grade: 'C', remark: 'Good' };
-  if (total >= 45) return { grade: 'D', remark: 'Pass' };
-  if (total >= 40) return { grade: 'E', remark: 'Fair Pass' };
-  return { grade: 'F', remark: 'Fail' };
+export function calculateGrade(total: number): {
+  grade: 'A1' | 'B2' | 'B3' | 'C4' | 'C5' | 'C6' | 'D7' | 'E8' | 'F9';
+  remark: string;
+  letterGrade: 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+} {
+  const score = Math.round(Math.min(100, Math.max(0, total)));
+  if (score >= 75) return { grade: 'A1', remark: 'Excellent', letterGrade: 'A' };
+  if (score >= 70) return { grade: 'B2', remark: 'Very Good', letterGrade: 'A' };
+  if (score >= 65) return { grade: 'B3', remark: 'Good', letterGrade: 'B' };
+  if (score >= 60) return { grade: 'C4', remark: 'Credit', letterGrade: 'B' };
+  if (score >= 55) return { grade: 'C5', remark: 'Credit', letterGrade: 'C' };
+  if (score >= 50) return { grade: 'C6', remark: 'Credit', letterGrade: 'C' };
+  if (score >= 45) return { grade: 'D7', remark: 'Pass', letterGrade: 'D' };
+  if (score >= 40) return { grade: 'E8', remark: 'Fair Pass', letterGrade: 'E' };
+  return { grade: 'F9', remark: 'Fail', letterGrade: 'F' };
 }
 
 /**

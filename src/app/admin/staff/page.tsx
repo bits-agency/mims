@@ -336,7 +336,7 @@ export default function AdminStaffPage() {
       });
 
       if (res.ok) {
-        showToast(`Account provisioned for ${newStaff.name}! Temporary Password: ${formPassword.trim() || 'Mimsakure27'}`);
+        showToast(`Account provisioned successfully for ${newStaff.name}!`);
         setIsAddModalOpen(false);
         loadData();
       } else {
@@ -397,38 +397,59 @@ export default function AdminStaffPage() {
 
   const handleResetPassword = async (name: string, email: string) => {
     const defaultNewPass = 'Mimsakure27';
-    const confirmReset = window.confirm(`Reset security password for "${name}" (${email}) to default "${defaultNewPass}"?`);
+    const confirmReset = window.confirm(`Reset security password for "${name}" (${email})?`);
     if (!confirmReset) return;
 
     try {
       const target = staffList.find((s) => s.email === email);
       if (target) {
-        await fetch('/api/admin/staff', {
+        const res = await fetch('/api/admin/staff', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: target.id, password: defaultNewPass }),
+          body: JSON.stringify({ teacherId: target.id, resetPassword: defaultNewPass }),
         });
+        if (!res.ok) {
+          const d = await res.json();
+          throw new Error(d.error || 'Reset failed');
+        }
       }
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(defaultNewPass).catch(() => {});
-      }
-      showToast(`Password for ${name} reset to "${defaultNewPass}"! (Copied to clipboard)`);
-    } catch {
-      showToast(`Password reset link dispatched to ${email}.`);
+      showToast(`Password for ${name} reset successfully.`);
+    } catch (err: any) {
+      showToast(err.message || `Failed to reset password for ${name}.`);
     }
   };
 
-  const handleToggleStatus = (id: string) => {
+  const handleToggleStatus = async (id: string) => {
+    const target = staffList.find((s) => s.id === id);
+    if (!target) return;
+    const nextStatus = target.status === 'Active' ? 'Suspended' : 'Active';
+
+    // Optimistic UI update
     setStaffList((prev) =>
-      prev.map((s) => {
-        if (s.id === id) {
-          const nextStatus = s.status === 'Active' ? 'Suspended' : 'Active';
-          showToast(`${s.name} account is now marked as ${nextStatus}.`);
-          return { ...s, status: nextStatus };
-        }
-        return s;
-      })
+      prev.map((s) => (s.id === id ? { ...s, status: nextStatus } : s))
     );
+
+    try {
+      const res = await fetch('/api/admin/staff', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacherId: id,
+          status: nextStatus.toLowerCase(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update status');
+      }
+      showToast(`${target.name} account is now marked as ${nextStatus}.`);
+    } catch (err: any) {
+      // Revert on failure
+      setStaffList((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, status: target.status } : s))
+      );
+      showToast(err.message || 'Status update failed.');
+    }
   };
 
   // Filter staff

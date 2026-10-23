@@ -33,41 +33,18 @@ export default function AdmissionsStatusPage() {
     setSearched(true);
 
     try {
-      const res = await fetch(`/api/admissions/applicants`);
+      const res = await fetch(`/api/admissions/status?ref=${encodeURIComponent(refQuery.trim())}`);
       const data = await res.json();
 
-      if (data.success && data.applicants && data.applicants.length > 0) {
-        const found = data.applicants.find(
-          (a: any) =>
-            (a.admission_no && a.admission_no.toLowerCase() === refQuery.trim().toLowerCase()) ||
-            (a.users?.email && a.users.email.toLowerCase() === refQuery.trim().toLowerCase()) ||
-            `${a.firstname} ${a.lastname}`.toLowerCase().includes(refQuery.trim().toLowerCase())
-        );
-
-        if (found) {
-          setApplicant({
-            name: `${found.firstname} ${found.lastname}`,
-            refNo: found.admission_no || refQuery.trim().toUpperCase(),
-            email: found.users?.email || 'Registered Applicant',
-            status: found.exam_status || 'scheduled',
-            examDate: found.exam_date || 'Saturday, 18th October 2026',
-            examTime: found.exam_time || '09:00 AM WAT',
-            examVenue: found.exam_venue || 'MIMS Main Examination Hall, Akure Campus',
-            instructions:
-              found.exam_notes ||
-              'Please arrive at least 30 minutes before exam time. Candidates must bring their printed examination slip, two 2B pencils, an eraser, and their original birth certificate for physical verification.',
-          });
-        } else {
-          setApplicant(null);
-          setErrorMessage(`No application record found matching "${refQuery}". Please check your application reference number.`);
-        }
+      if (data.success && data.applicant) {
+        setApplicant(data.applicant);
       } else {
         setApplicant(null);
-        setErrorMessage('No active application records found in the database. Please verify your reference number.');
+        setErrorMessage(data.message || data.error || `No application record found matching "${refQuery}". Please verify your reference number.`);
       }
-    } catch (err) {
-      console.error('Search error:', err);
-      setErrorMessage('Unable to retrieve application status at this time. Please try again later.');
+    } catch {
+      setApplicant(null);
+      setErrorMessage('Unable to connect to admissions registry. Please check your network connection.');
     } finally {
       setLoading(false);
     }
