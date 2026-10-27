@@ -166,9 +166,18 @@ export default function HomePage() {
               </div>
             )}
 
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl xl:text-[3.25rem] font-black tracking-tight leading-[1.18] sm:leading-[1.15] mb-3 sm:mb-4 text-white drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)] max-w-3xl">
-              {heroSlides[currentSlide].title}
+            {/* Semantic Permanent H1 for Search Engine Indexing & Branding */}
+            <h1 className="text-base sm:text-xl lg:text-2xl font-black uppercase tracking-wider text-emerald-400 drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)] mb-2">
+              MSSN Islamic Model Schools, Akure
             </h1>
+            <span className="sr-only">
+              Formerly Al-Birr Islamic Model College. Awarded 1st Position Ondo Central. Premier Islamic and Western Primary and Secondary College in Ondo State.
+            </span>
+
+            {/* Dynamic Visual Headline for Hero Carousel */}
+            <div className="text-2xl sm:text-4xl lg:text-5xl xl:text-[3.25rem] font-black tracking-tight leading-[1.18] sm:leading-[1.15] mb-3 sm:mb-4 text-white drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)] max-w-3xl">
+              {heroSlides[currentSlide].title}
+            </div>
 
             <p className="text-xs sm:text-base lg:text-lg text-slate-100 mb-5 sm:mb-6 leading-relaxed font-normal sm:font-medium max-w-2xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
               {heroSlides[currentSlide].desc}

@@ -4,7 +4,7 @@ import { requireAuth, logAudit } from '@/lib/guard';
 
 export async function GET(request: Request) {
   try {
-    const auth = await requireAuth(['admin', 'super_admin']);
+    const auth = await requireAuth(['admin', 'super_admin', 'bursar']);
     if (!auth.authorized) return auth.response;
 
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;

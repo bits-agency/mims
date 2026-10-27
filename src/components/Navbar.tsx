@@ -50,6 +50,7 @@ export default function Navbar({ currentPath }: NavbarProps) {
     { label: 'Home', href: '/' },
     { label: 'About Us', href: '/about' },
     { label: 'Admissions & Programs', href: '/admissions' },
+    { label: 'Handbook & Docs', href: '/docs' },
     { label: 'Campuses & Contact', href: '/contact' },
   ];
 

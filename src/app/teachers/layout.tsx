@@ -35,6 +35,7 @@ export default function TeacherPortalLayout({
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [primaryAllocation, setPrimaryAllocation] = useState<string>('Faculty Member');
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -42,6 +43,16 @@ export default function TeacherPortalLayout({
       .then((data) => {
         if (data?.authenticated && data?.user) {
           setCurrentUser(data.user);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/teachers/allocations')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data.allocations) && data.allocations.length > 0) {
+          const subjects = Array.from(new Set(data.allocations.map((a: any) => a.subject_name).filter(Boolean)));
+          setPrimaryAllocation(subjects.slice(0, 2).join(' & ') || data.allocations[0].subject_name || 'Assigned Faculty');
         }
       })
       .catch(() => {});
@@ -94,7 +105,7 @@ export default function TeacherPortalLayout({
           {/* Allocation Quick Pill */}
           <div className="mx-4 my-3 px-3 py-2 rounded-xl bg-emerald-950/50 border border-emerald-500/20 text-[11px] text-emerald-300 flex items-center gap-2">
             <BookOpen className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="truncate">Physics &amp; Further Maths</span>
+            <span className="truncate">{primaryAllocation}</span>
           </div>
 
           {/* Navigation Items */}

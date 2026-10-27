@@ -11,9 +11,8 @@ export async function middleware(request: NextRequest) {
   const isTeacherPath = pathname.startsWith('/teachers');
   const isBursarPath = pathname.startsWith('/bursar');
   const isStudentPath = pathname.startsWith('/students');
-  const isDocsPath = pathname.startsWith('/docs');
 
-  const isProtected = isAdminPath || isTeacherPath || isBursarPath || isStudentPath || isDocsPath;
+  const isProtected = isAdminPath || isTeacherPath || isBursarPath || isStudentPath;
 
   if (isProtected) {
     if (!sessionCookie) {
@@ -70,18 +69,6 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/', request.url));
       }
     }
-
-    if (isDocsPath) {
-      // Internal documentation requires authorized school staff or admin
-      const isStaffOrAdmin =
-        session.role === 'admin' ||
-        session.role === 'super_admin' ||
-        session.role === 'bursar' ||
-        session.role === 'teacher';
-      if (!isStaffOrAdmin) {
-        return NextResponse.redirect(new URL('/', request.url));
-      }
-    }
   }
 
   return NextResponse.next();
@@ -93,6 +80,5 @@ export const config = {
     '/bursar/:path*',
     '/teachers/:path*',
     '/students/:path*',
-    '/docs/:path*',
   ],
 };

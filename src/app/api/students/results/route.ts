@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAuth } from '@/lib/guard';
+import { getLeviesForStudentClass } from '@/lib/bursary';
 
 export async function GET(request: Request) {
   try {
@@ -64,8 +65,25 @@ export async function GET(request: Request) {
       .eq('term', term)
       .maybeSingle();
 
-    const isCleared = clearance?.is_cleared === true && Number(clearance?.balance || 0) <= 0;
-    const balance = Number(clearance?.balance || 0);
+    let isCleared = false;
+    let balance = 55000;
+
+    if (clearance) {
+      isCleared = clearance.is_cleared === true && Number(clearance.balance || 0) <= 0;
+      balance = Number(clearance.balance || 0);
+    } else {
+      // If no clearance record exists yet, calculate their actual class tariff so they see the real term fee due
+      try {
+        const studentClassName = (student as any).classes?.class_name;
+        const levies = getLeviesForStudentClass(studentClassName);
+        const classTotal = levies.reduce((sum, l) => sum + Number(l.amount || 0), 0);
+        balance = classTotal || 55000;
+        isCleared = false;
+      } catch {
+        balance = 55000;
+        isCleared = false;
+      }
+    }
 
     // 4. Check term release status joined with the specific academic session
     const termNumber = term === 'first' ? 1 : term === 'second' ? 2 : 3;

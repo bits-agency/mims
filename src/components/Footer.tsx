@@ -100,6 +100,11 @@ export default function Footer() {
               </Link>
             </li>
             <li>
+              <Link href="/docs" className="hover:text-emerald-400 transition text-emerald-300 font-semibold">
+                School Policy &amp; Academic Docs
+              </Link>
+            </li>
+            <li>
               <Link href="/contact" className="hover:text-emerald-400 transition">
                 Our 3 Campus Locations
               </Link>
