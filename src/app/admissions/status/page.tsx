@@ -14,8 +14,11 @@ import {
   AlertCircle,
   Search,
   Loader2,
-  Inbox
+  Inbox,
+  ChevronRight
 } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 export default function AdmissionsStatusPage() {
   const [refQuery, setRefQuery] = useState('');
@@ -55,23 +58,35 @@ export default function AdmissionsStatusPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 py-10 px-4 sm:px-6 font-sans">
-      <div className="max-w-3xl mx-auto space-y-6">
-        {/* Navigation Header */}
-        <div className="no-print flex items-center justify-between">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to Homepage
-          </Link>
-          <Link
-            href="/admissions/apply"
-            className="text-xs font-bold text-emerald-700 hover:underline"
-          >
-            Apply for Admission &rarr;
-          </Link>
-        </div>
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+      <div className="no-print">
+        <Navbar />
+      </div>
+
+      <main className="flex-1 py-10 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto space-y-6">
+          {/* Breadcrumb Navigation */}
+          <div className="no-print flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5 text-slate-500 font-medium">
+              <Link href="/" className="hover:text-emerald-700 transition">
+                Home
+              </Link>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              <Link href="/admissions" className="hover:text-emerald-700 transition">
+                Admissions
+              </Link>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-slate-900 font-bold">Application Status</span>
+            </div>
+
+            <Link
+              href="/admissions/apply"
+              className="font-bold text-emerald-700 hover:underline flex items-center gap-1"
+            >
+              <span>Apply for Admission</span>
+              <span>&rarr;</span>
+            </Link>
+          </div>
 
         {/* Search Bar */}
         <div className="no-print bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
@@ -268,6 +283,11 @@ export default function AdmissionsStatusPage() {
             </div>
           </>
         )}
+        </div>
+      </main>
+
+      <div className="no-print">
+        <Footer />
       </div>
     </div>
   );

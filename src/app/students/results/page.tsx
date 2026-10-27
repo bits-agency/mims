@@ -30,6 +30,7 @@ interface ResultRow {
 export default function StudentResultsPage() {
   const router = useRouter();
   const [session, setSession] = useState('2025/2026');
+  const [availableSessions, setAvailableSessions] = useState<string[]>(['2025/2026', '2024/2025']);
   const [term, setTerm] = useState('first');
   const [loading, setLoading] = useState(true);
   const [isCleared, setIsCleared] = useState(true);
@@ -37,6 +38,22 @@ export default function StudentResultsPage() {
   const [isReleased, setIsReleased] = useState(true);
   const [results, setResults] = useState<ResultRow[]>([]);
   const [student, setStudent] = useState<any>(null);
+
+  // Sync with active academic session from database
+  useEffect(() => {
+    fetch('/api/sessions/active')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success) {
+          if (data.sessionName) setSession(data.sessionName);
+          if (data.term) setTerm(data.term);
+          if (data.allSessions && data.allSessions.length > 0) {
+            setAvailableSessions(data.allSessions);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     async function loadResults() {
@@ -99,8 +116,11 @@ export default function StudentResultsPage() {
               onChange={(e) => setSession(e.target.value)}
               className="text-xs font-bold px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 focus:outline-none shadow-xs"
             >
-              <option value="2025/2026">2025/2026 Session (Current)</option>
-              <option value="2024/2025">2024/2025 Session (Archived)</option>
+              {availableSessions.map((s) => (
+                <option key={s} value={s}>
+                  {s} Session
+                </option>
+              ))}
             </select>
 
             <select

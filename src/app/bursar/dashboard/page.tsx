@@ -59,6 +59,7 @@ export default function BursarDashboardPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeWing, setActiveWing] = useState<'all' | 'primary' | 'secondary'>('all');
   const [selectedSession, setSelectedSession] = useState('2025/2026');
+  const [availableSessions, setAvailableSessions] = useState<string[]>(['2025/2026', '2024/2025']);
   const [selectedTerm, setSelectedTerm] = useState<'first' | 'second' | 'third' | 'all'>('first');
   const [stats, setStats] = useState<BursarStats>({
     totalCollected: 0,
@@ -75,7 +76,23 @@ export default function BursarDashboardPage() {
   const [recentTellers, setRecentTellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Load user profile to detect assigned wing
+  // 1. Load active session & term from database
+  useEffect(() => {
+    fetch('/api/sessions/active')
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.success) {
+          if (data.sessionName) setSelectedSession(data.sessionName);
+          if (data.term) setSelectedTerm(data.term);
+          if (data.allSessions && data.allSessions.length > 0) {
+            setAvailableSessions(data.allSessions);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // 2. Load user profile to detect assigned wing
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
@@ -175,8 +192,11 @@ export default function BursarDashboardPage() {
               onChange={(e) => setSelectedSession(e.target.value)}
               className="bg-transparent text-white text-xs font-bold px-2 py-1 focus:outline-none cursor-pointer"
             >
-              <option value="2025/2026" className="bg-[#0D1527] text-white">2025/2026</option>
-              <option value="2024/2025" className="bg-[#0D1527] text-white">2024/2025</option>
+              {availableSessions.map((s) => (
+                <option key={s} value={s} className="bg-[#0D1527] text-white">
+                  {s}
+                </option>
+              ))}
             </select>
           </div>
 
