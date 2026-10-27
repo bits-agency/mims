@@ -50,7 +50,6 @@ export default function Navbar({ currentPath }: NavbarProps) {
     { label: 'Home', href: '/' },
     { label: 'About Us', href: '/about' },
     { label: 'Admissions & Programs', href: '/admissions' },
-    { label: 'Handbook & Docs', href: '/docs' },
     { label: 'Campuses & Contact', href: '/contact' },
   ];
 
@@ -106,34 +105,34 @@ export default function Navbar({ currentPath }: NavbarProps) {
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-3">
         {/* Brand Logo & Name */}
-        <Link href="/" className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <Link href="/" className="flex items-center gap-2.5 sm:gap-3 shrink-0">
           <img
             src="/images/logo.png"
             alt="MSSN Islamic Model Schools Akure Logo"
             className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-xl bg-white p-0.5 border border-slate-200 shadow-xs shrink-0"
           />
-          <div className="min-w-0">
-            <span className="font-black text-xs sm:text-base lg:text-lg tracking-tight text-slate-900 leading-tight block truncate">
+          <div className="flex flex-col">
+            <span className="font-black text-sm sm:text-base lg:text-lg tracking-tight text-slate-900 leading-tight whitespace-nowrap">
               MSSN ISLAMIC MODEL SCHOOLS
             </span>
-            <p className="text-[8px] sm:text-[10px] tracking-wider uppercase text-emerald-700 font-extrabold truncate">
-              Akure • Formerly Al-Birr Islamic Model College
+            <p className="text-[9px] sm:text-[10px] tracking-wider uppercase text-emerald-700 font-extrabold whitespace-nowrap">
+              Akure • Nursery • Primary • College
             </p>
           </div>
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-7 text-sm font-semibold text-slate-600">
+        <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-600">
           {navLinks.map((link) => {
             const active = isActive(link.href);
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`transition-colors py-1 border-b-2 font-medium ${
+                className={`transition-all py-1 border-b-2 font-medium ${
                   active
-                    ? 'text-emerald-600 border-emerald-600 font-bold'
-                    : 'border-transparent hover:text-slate-900 hover:border-slate-300'
+                    ? 'text-emerald-700 border-emerald-600 font-bold'
+                    : 'border-transparent text-slate-600 hover:text-slate-950 hover:border-slate-300'
                 }`}
               >
                 {link.label}
@@ -146,14 +145,14 @@ export default function Navbar({ currentPath }: NavbarProps) {
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Link
             href="/login"
-            className="text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 transition hidden sm:inline-flex"
+            className="text-xs font-bold px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:text-slate-900 hover:bg-slate-50 hover:border-slate-400 transition hidden sm:inline-flex items-center shadow-2xs"
           >
             Portal Login
           </Link>
           {isAdmissionsOpen ? (
             <Link
               href="/admissions/apply"
-              className="text-xs sm:text-sm font-bold px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition shadow-xs whitespace-nowrap flex items-center gap-1.5"
+              className="text-xs sm:text-sm font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm hover:shadow-md whitespace-nowrap flex items-center gap-1.5"
             >
               <span>Apply Now</span>
               <ArrowRight className="w-3.5 h-3.5 hidden sm:inline" />
@@ -161,7 +160,7 @@ export default function Navbar({ currentPath }: NavbarProps) {
           ) : (
             <Link
               href="/admissions"
-              className="text-xs sm:text-sm font-bold px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition shadow-xs whitespace-nowrap flex items-center gap-1.5 border border-slate-700"
+              className="text-xs sm:text-sm font-bold px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-700 transition shadow-xs whitespace-nowrap flex items-center gap-1.5 border border-slate-700"
             >
               <span>Admissions Info</span>
             </Link>

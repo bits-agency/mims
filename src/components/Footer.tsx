@@ -78,40 +78,46 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Col 4: Quick Portals */}
+        {/* Col 4: Institutional Policy & Documentation */}
         <div>
           <h4 className="text-white font-bold text-sm mb-4 border-l-2 border-emerald-500 pl-2">
-            Quick Navigation
+            Policy &amp; Handbook
           </h4>
           <ul className="space-y-2.5 text-xs">
             <li>
-              <Link href="/" className="hover:text-emerald-400 transition">
-                Home Portal
+              <Link href="/docs" className="text-emerald-400 font-bold hover:underline flex items-center gap-1">
+                <span>All Institutional Docs</span>
+                <span>&rarr;</span>
               </Link>
             </li>
             <li>
-              <Link href="/about" className="hover:text-emerald-400 transition">
-                About Our History &amp; MSSN Heritage
+              <Link href="/docs#code-of-conduct" className="hover:text-emerald-300 transition">
+                Student Code of Conduct
               </Link>
             </li>
             <li>
-              <Link href="/admissions" className="hover:text-emerald-400 transition">
-                Admission Guidelines &amp; Fees
+              <Link href="/docs#grading-system" className="hover:text-emerald-300 transition">
+                Grading &amp; Assessment Policy
               </Link>
             </li>
             <li>
-              <Link href="/docs" className="hover:text-emerald-400 transition text-emerald-300 font-semibold">
-                School Policy &amp; Academic Docs
+              <Link href="/docs#fee-clearance-policy" className="hover:text-emerald-300 transition">
+                Fee Tariffs &amp; Bursary Regulations
               </Link>
             </li>
             <li>
-              <Link href="/contact" className="hover:text-emerald-400 transition">
-                Our 3 Campus Locations
+              <Link href="/docs#hifz-memorization" className="hover:text-emerald-300 transition">
+                Hifzul Qur’an Syllabus Rules
               </Link>
             </li>
             <li>
-              <Link href="/login" className="hover:text-emerald-400 transition font-bold text-slate-300">
-                Student &amp; Staff Login
+              <Link href="/docs#accreditation" className="hover:text-emerald-300 transition">
+                WAEC, NECO &amp; NBAIS Charters
+              </Link>
+            </li>
+            <li className="pt-2 border-t border-slate-800">
+              <Link href="/login" className="hover:text-white transition font-bold text-slate-300">
+                Staff &amp; Student Portal &rarr;
               </Link>
             </li>
           </ul>

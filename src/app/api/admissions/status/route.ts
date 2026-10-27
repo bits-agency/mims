@@ -1,8 +1,24 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function GET(request: Request) {
   try {
+    // 0. Rate limiting protection (max 20 status queries per minute per IP)
+    const ip = getClientIp(request);
+    const rate = checkRateLimit(`admissions_status:${ip}`, 20, 60 * 1000);
+    if (!rate.allowed) {
+      return NextResponse.json(
+        {
+          error: `Too many lookup requests from your network. Please wait ${rate.retryAfterSeconds} seconds before checking again.`,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rate.retryAfterSeconds) },
+        }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const ref = searchParams.get('ref')?.trim();
 

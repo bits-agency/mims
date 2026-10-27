@@ -27,17 +27,18 @@ export async function GET(request: Request) {
 
     const supabase = getAdminClient();
 
-    // 1. Identify target student
+    // 1. Identify target student (Strict IDOR Protection)
     let studentId: string | null = null;
     if (auth.session.role === 'student') {
+      // Students can ONLY view their own records; query parameter is strictly discarded
       const { data: studentRecord } = await supabase
         .from('students')
         .select('id')
-        .eq('user_id', auth.session.userId)
-        .single();
+        .or(`user_id.eq.${auth.session.userId},id.eq.${auth.session.userId}`)
+        .maybeSingle();
       studentId = studentRecord?.id || null;
     } else {
-      // Admin/Super Admin inspecting a student's broadsheet
+      // Admin, SuperAdmin, or Teacher inspecting a student's broadsheet
       studentId = queryStudentId || null;
     }
 

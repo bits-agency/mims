@@ -407,3 +407,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+/**
+ * Financial Immutability Lock:
+ * Prohibits modification of verified receipts to prevent financial fraud.
+ */
+export async function PUT() {
+  return NextResponse.json(
+    {
+      error:
+        'Anti-Fraud Security Lock: Verified financial receipts and bank payments are legally immutable and cannot be updated. In the case of an erroneous posting, please contact the SuperAdministrator for an audited reversal entry.',
+    },
+    { status: 403 }
+  );
+}
+
+/**
+ * Financial Immutability Lock:
+ * Prohibits deletion of financial transactions to prevent ledger tampering.
+ */
+export async function DELETE() {
+  return NextResponse.json(
+    {
+      error:
+        'Anti-Fraud Security Lock: Verified transaction receipts cannot be deleted. All financial entries are permanently archived for institutional accounting audits.',
+    },
+    { status: 403 }
+  );
+}
+

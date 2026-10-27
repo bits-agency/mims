@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { verifyPassword, createSessionToken, setSessionCookie } from '@/lib/auth';
 import { loginSchema } from '@/lib/validation';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
   try {
@@ -17,6 +18,21 @@ export async function POST(request: Request) {
 
     const { identifier, password } = parseResult.data;
 
+    // Fast in-memory brute-force protection (max 10 attempts per 60 seconds per IP)
+    const clientIp = getClientIp(request);
+    const ipRate = checkRateLimit(`login_ip:${clientIp}`, 10, 60 * 1000);
+    if (!ipRate.allowed) {
+      return NextResponse.json(
+        {
+          error: `High volume of authentication attempts detected. Please wait ${ipRate.retryAfterSeconds} seconds before trying again.`,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(ipRate.retryAfterSeconds) },
+        }
+      );
+    }
+
     // Check if Supabase credentials are configured
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -31,10 +47,6 @@ export async function POST(request: Request) {
 
     // Sanitize identifier to prevent PostgREST filter injection (remove commas, parentheses, quotes)
     const cleanIdent = identifier.trim().replace(/[(),"\\]/g, '');
-    const clientIp =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown';
 
     // 0. Rate limiting check (max 5 failed attempts in past 15 minutes)
     const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
