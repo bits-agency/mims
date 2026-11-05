@@ -1,9 +1,25 @@
 import { NextResponse } from 'next/server';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 import { requireAuth } from '@/lib/guard';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
   try {
+    // 0. Rate limit uploads to prevent DoS and quota exhaustion
+    const clientIp = getClientIp(request);
+    const rateCheck = checkRateLimit(`upload_ip:${clientIp}`, 10, 60 * 1000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: `High volume of upload requests. Please wait ${rateCheck.retryAfterSeconds} seconds before uploading again.`,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rateCheck.retryAfterSeconds) },
+        }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const folder = (formData.get('folder') as string) || 'mims/uploads';
@@ -19,20 +35,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
     }
 
-    // Validate mime type (images and pdfs only)
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    // Passports must strictly be image files only (no PDFs for passports)
+    const isPassport = folder.startsWith('mims/passports');
+    const imageTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const documentTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+    const allowedTypes = isPassport ? imageTypes : documentTypes;
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: 'Invalid file type. Only JPEG, PNG, WebP images, and PDF documents are permitted.' },
+        {
+          error: isPassport
+            ? 'Invalid photo format. Student passport photograph must be a JPEG, PNG, or WebP image.'
+            : 'Invalid file type. Only JPEG, PNG, WebP images, and PDF documents are permitted.',
+        },
         { status: 400 }
       );
     }
 
-    // Validate file size (max 5MB)
-    const MAX_SIZE = 5 * 1024 * 1024;
+    // Validate file size (max 3MB for passport photos, 5MB for academic dossiers)
+    const MAX_SIZE = isPassport ? 3 * 1024 * 1024 : 5 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
-        { error: 'File size exceeds maximum permitted limit of 5 MB.' },
+        {
+          error: `File size exceeds maximum permitted limit of ${isPassport ? '3 MB for passport photos' : '5 MB'}.`,
+        },
         { status: 400 }
       );
     }

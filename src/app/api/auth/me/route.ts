@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getSession, SESSION_COOKIE_NAME } from '@/lib/auth';
 import { getAdminClient } from '@/lib/supabase/admin';
 
 export async function GET() {
@@ -27,8 +27,23 @@ export async function GET() {
 
       if (dbUser) {
         if (dbUser.status === 'suspended' || dbUser.status === 'inactive') {
-          return NextResponse.json({ authenticated: false, error: 'Account suspended.' }, { status: 403 });
+          const res = NextResponse.json({ authenticated: false, error: 'Account suspended.' }, { status: 403 });
+          res.cookies.delete(SESSION_COOKIE_NAME);
+          return res;
         }
+
+        // Verify session version against live DB: if password/status changed, kill cookie
+        const currentVersion = dbUser.session_version ?? 0;
+        const tokenVersion = session.sessionVersion ?? 0;
+        if (currentVersion !== tokenVersion) {
+          const res = NextResponse.json(
+            { authenticated: false, error: 'Session invalidated due to security or password update.' },
+            { status: 401 }
+          );
+          res.cookies.delete(SESSION_COOKIE_NAME);
+          return res;
+        }
+
         liveRole = dbUser.role;
         liveWing = dbUser.wing || 'all';
         liveStatus = dbUser.status;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAuth, logAudit } from '@/lib/guard';
+import { mediaGallerySchema } from '@/lib/validation';
 
 export async function GET() {
   try {
@@ -38,15 +39,38 @@ export async function POST(request: Request) {
     const auth = await requireAuth(['admin', 'super_admin']);
     if (!auth.authorized) return auth.response;
 
-    const body = await request.json();
-    const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const rawBody = await request.json().catch(() => ({}));
+    const parseResult = mediaGallerySchema.safeParse(rawBody);
 
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.errors[0]?.message || 'Invalid media gallery parameters.' },
+        { status: 400 }
+      );
+    }
+
+    const { title, category, image_url, caption, date_added, is_featured, file_size } = parseResult.data;
+
+    const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!hasSupabase) {
       return NextResponse.json({ error: 'Database service configuration missing.' }, { status: 503 });
     }
 
     const supabase = getAdminClient();
-    const { data, error } = await supabase.from('media_gallery').insert(body).select().single();
+    const { data, error } = await supabase
+      .from('media_gallery')
+      .insert({
+        title: title.trim(),
+        category,
+        image_url: image_url.trim(),
+        caption: caption?.trim() || null,
+        date_added: date_added || new Date().toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
+        is_featured: is_featured !== false,
+        file_size: file_size || '1.5 MB',
+      })
+      .select()
+      .single();
+
     if (error) throw error;
 
     await logAudit({
