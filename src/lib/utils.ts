@@ -53,11 +53,12 @@ export function generateStaffNumber(sequenceNumber: number | string): string {
 }
 
 /**
- * Generates a payment receipt number (e.g. REC/20261001/4592)
+ * Generates a fallback payment receipt code with high-entropy timestamp and crypto random bytes
+ * @deprecated Prefer the database sequence via `next_code('receipt')` in PostgreSQL.
  */
 export function generateReceiptNumber(): string {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const rand = Math.floor(1000 + Math.random() * 9000);
+  const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
   return `REC/${dateStr}/${rand}`;
 }
 

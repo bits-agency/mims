@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAuth, logAudit } from '@/lib/guard';
+import { achievementSchema } from '@/lib/validation';
 
 export async function GET() {
   try {
@@ -38,15 +39,38 @@ export async function POST(request: Request) {
     const auth = await requireAuth(['admin', 'super_admin']);
     if (!auth.authorized) return auth.response;
 
-    const body = await request.json();
-    const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const rawBody = await request.json().catch(() => ({}));
+    const parseResult = achievementSchema.safeParse(rawBody);
 
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.errors[0]?.message || 'Invalid achievement parameters.' },
+        { status: 400 }
+      );
+    }
+
+    const { title, category, year, recipient, description, is_featured, badge_text } = parseResult.data;
+
+    const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!hasSupabase) {
       return NextResponse.json({ error: 'Database service configuration missing.' }, { status: 503 });
     }
 
     const supabase = getAdminClient();
-    const { data, error } = await supabase.from('achievements').insert(body).select().single();
+    const { data, error } = await supabase
+      .from('achievements')
+      .insert({
+        title: title.trim(),
+        category,
+        year: year.trim(),
+        recipient: recipient.trim(),
+        description: description.trim(),
+        is_featured: is_featured !== false,
+        badge_text: badge_text || 'Distinction',
+      })
+      .select()
+      .single();
+
     if (error) throw error;
 
     await logAudit({

@@ -61,3 +61,59 @@ export const contactMessageSchema = z.object({
   level: z.string().max(100).optional(),
   message: z.string().min(5, 'Message must be at least 5 characters').max(2000),
 });
+
+export const studentRegistrationSchema = z.object({
+  firstname: z.string().min(1, 'First name is required').max(100),
+  lastname: z.string().min(1, 'Last name is required').max(100),
+  gender: z.enum(['male', 'female', 'Male', 'Female']),
+  dob: z.string().optional().nullable(),
+  category: z.enum(['Day', 'Boarding']).default('Day'),
+  class_id: z.string().uuid('Valid class arm ID is required').optional().nullable(),
+  guardian_name: z.string().max(255).optional().nullable(),
+  guardian_phone: z.string().max(50).optional().nullable(),
+  guardian_email: z.string().email('Valid guardian email required').optional().or(z.literal('')).nullable(),
+  address: z.string().max(500).optional().nullable(),
+  photo: z.string().optional().nullable(),
+});
+
+export const mediaGallerySchema = z.object({
+  title: z.string().min(2, 'Title is required').max(255),
+  category: z.enum(['Campus Facilities', 'Academic Life', 'Spiritual & Tahfeez', 'Sports & Events']),
+  image_url: z.string().min(5, 'Valid image URL is required'),
+  caption: z.string().max(500).optional().nullable(),
+  date_added: z.string().max(50).optional().nullable(),
+  is_featured: z.boolean().default(true),
+  file_size: z.string().max(20).optional().nullable(),
+});
+
+export const achievementSchema = z.object({
+  title: z.string().min(2, 'Achievement title is required').max(255),
+  category: z.enum(['Academic', 'Quranic & Tahfeez', 'STEM & Science', 'Sports & Morals']),
+  year: z.string().min(4).max(20),
+  recipient: z.string().min(2, 'Recipient name is required').max(255),
+  description: z.string().min(5, 'Description is required').max(1000),
+  is_featured: z.boolean().default(true),
+  badge_text: z.string().max(50).default('Distinction'),
+});
+
+export const admissionsApplicationSchema = z.object({
+  firstname: z.string().min(1, 'First name is required').max(100),
+  middlename: z.string().max(100).optional().nullable(),
+  lastname: z.string().min(1, 'Last name is required').max(100),
+  email: z.string().email('Valid applicant/guardian email address is required'),
+  password: z.string().min(6, 'Password must be at least 6 characters in length'),
+  gender: z.enum(['male', 'female', 'Male', 'Female']),
+  dob: z.string().optional().nullable(),
+  target_class: z.string().max(100).optional().nullable(),
+  campus_preference: z.string().max(150).optional().nullable(),
+  boarding_type: z.enum(['Day', 'Boarding']).default('Day'),
+  guardian_name: z.string().max(255).optional().nullable(),
+  guardian_phone: z.string().max(50).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+  prev_school_name: z.string().max(255).optional().nullable(),
+  prev_grade_completed: z.string().max(100).optional().nullable(),
+  medical_history: z.string().max(1000).optional().nullable(),
+  special_needs: z.string().max(1000).optional().nullable(),
+  photo: z.string().optional().nullable(),
+  report_file_url: z.string().optional().nullable(),
+});

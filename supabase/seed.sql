@@ -10,7 +10,7 @@
 -- 1. User Accounts (Password for all seed users is 'Admin@12345')
 -- Hash: $2b$10$JkvCAUuxGuYv/h0Mdx3XHeIVuLgeTUCZUolkcbB/oLM.Gs.KhY5TC
 INSERT INTO users (id, full_name, username, email, password, role, status) VALUES
-  ('11111111-1111-1111-1111-111111111111', 'MIMS Super Administrator', 'bamiebot', 'bamiebot@gmail.com', '$2b$10$nwGZFr2xzt7D9UpmJr7qb.ILg5XQiGss8zXDzYg.mjjYueSJovugS', 'admin', 'active'),
+  ('11111111-1111-1111-1111-111111111111', 'MIMS Super Administrator', 'bamiebot', 'bamiebot@gmail.com', '$2b$10$nwGZFr2xzt7D9UpmJr7qb.ILg5XQiGss8zXDzYg.mjjYueSJovugS', 'super_admin', 'active'),
   ('11111111-1111-1111-1111-111111111112', 'Alhaji Yusuf Adeyemi (FCA)', 'bursar', 'bursar@mimsakure.com', '$2b$10$JkvCAUuxGuYv/h0Mdx3XHeIVuLgeTUCZUolkcbB/oLM.Gs.KhY5TC', 'bursar', 'active'),
   ('11111111-1111-1111-1111-111111111113', 'Ustadh Luqman Abdullahi', 'teacher', 'teacher@mimsakure.com', '$2b$10$JkvCAUuxGuYv/h0Mdx3XHeIVuLgeTUCZUolkcbB/oLM.Gs.KhY5TC', 'teacher', 'active'),
   ('11111111-1111-1111-1111-111111111114', 'Mrs. Zainab Yusuf', 'zainab', 'zainab@mimsakure.com', '$2b$10$JkvCAUuxGuYv/h0Mdx3XHeIVuLgeTUCZUolkcbB/oLM.Gs.KhY5TC', 'teacher', 'active'),

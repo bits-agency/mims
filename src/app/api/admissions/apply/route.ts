@@ -2,10 +2,20 @@ import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { hashPassword, createSessionToken, setSessionCookie } from '@/lib/auth';
 import { generateApplicationRef } from '@/lib/utils';
+import { admissionsApplicationSchema } from '@/lib/validation';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}));
+    const rawBody = await request.json().catch(() => ({}));
+    const parseResult = admissionsApplicationSchema.safeParse(rawBody);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.errors[0]?.message || 'Please complete all required fields.' },
+        { status: 400 }
+      );
+    }
+
     const {
       firstname,
       middlename,
@@ -16,6 +26,7 @@ export async function POST(request: Request) {
       dob,
       target_class,
       campus_preference,
+      boarding_type,
       guardian_name,
       guardian_phone,
       address,
@@ -24,21 +35,8 @@ export async function POST(request: Request) {
       medical_history,
       special_needs,
       photo,
-    } = body;
-
-    if (!firstname || !lastname || !email || !gender) {
-      return NextResponse.json(
-        { error: 'First name, last name, valid email address, and gender are required.' },
-        { status: 400 }
-      );
-    }
-
-    if (!password || String(password).trim().length < 6) {
-      return NextResponse.json(
-        { error: 'Please provide a secure account password of at least 6 characters.' },
-        { status: 400 }
-      );
-    }
+      report_file_url,
+    } = parseResult.data;
 
     const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!hasSupabase) {
@@ -68,25 +66,35 @@ export async function POST(request: Request) {
     const fullName = [firstname, middlename, lastname].filter(Boolean).join(' ').trim();
     const hashedPassword = await hashPassword(String(password).trim());
 
-    // Generate unique, sequential application reference
-    const currentYear = new Date().getFullYear();
-    const { count: applicantCount } = await supabase
-      .from('students')
-      .select('*', { count: 'exact', head: true })
-      .is('class_id', null);
+    // Generate unique, collision-free sequential application reference via DB sequence
+    let appRef: string;
+    try {
+      const { data: codeData, error: codeErr } = await supabase.rpc('next_code', { p_kind: 'application' });
+      if (!codeErr && codeData) {
+        appRef = codeData;
+      } else {
+        throw codeErr || new Error('next_code RPC returned empty');
+      }
+    } catch {
+      const currentYear = new Date().getFullYear();
+      const { count: applicantCount } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .is('class_id', null);
 
-    const seq = (applicantCount || 0) + 1;
-    let appRef = generateApplicationRef(seq);
+      const seq = (applicantCount || 0) + 1;
+      appRef = generateApplicationRef(seq);
 
-    // Verify uniqueness
-    const { data: existingRef } = await supabase
-      .from('students')
-      .select('id')
-      .eq('admission_no', appRef)
-      .maybeSingle();
+      // Verify uniqueness
+      const { data: existingRef } = await supabase
+        .from('students')
+        .select('id')
+        .eq('admission_no', appRef)
+        .maybeSingle();
 
-    if (existingRef) {
-      appRef = `APP/${currentYear}/${String(seq + Math.floor(10 + Math.random() * 89)).padStart(4, '0')}`;
+      if (existingRef) {
+        appRef = `APP/${currentYear}/${String(seq + Math.floor(10 + Math.random() * 89)).padStart(4, '0')}`;
+      }
     }
 
     // Check if user with this email already exists

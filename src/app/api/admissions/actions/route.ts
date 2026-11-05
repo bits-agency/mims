@@ -103,28 +103,35 @@ export async function POST(request: Request) {
         );
       }
 
-      // Generate sequential, collision-free matriculation number
+      // Generate sequential, collision-free matriculation number via sequence
       let matricNo = newAdmissionNo?.trim();
       if (!matricNo) {
-        const currentYear = new Date().getFullYear();
-        // Count enrolled students to generate a sequential number
-        const { count } = await supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true })
-          .not('class_id', 'is', null);
+        try {
+          const { data: codeData, error: codeErr } = await supabase.rpc('next_code', { p_kind: 'admission' });
+          if (!codeErr && codeData) {
+            matricNo = codeData;
+          } else {
+            throw codeErr || new Error('next_code RPC returned empty');
+          }
+        } catch {
+          const currentYear = new Date().getFullYear();
+          const { count } = await supabase
+            .from('students')
+            .select('*', { count: 'exact', head: true })
+            .not('class_id', 'is', null);
 
-        const seq = (count || 0) + 1;
-        matricNo = `MIMS/${currentYear}/${String(seq).padStart(4, '0')}`;
+          const seq = (count || 0) + 1;
+          matricNo = `MIMS/${currentYear}/${String(seq).padStart(4, '0')}`;
 
-        // Ensure uniqueness
-        const { data: dupCheck } = await supabase
-          .from('students')
-          .select('id')
-          .eq('admission_no', matricNo)
-          .maybeSingle();
+          const { data: dupCheck } = await supabase
+            .from('students')
+            .select('id')
+            .eq('admission_no', matricNo)
+            .maybeSingle();
 
-        if (dupCheck) {
-          matricNo = `MIMS/${currentYear}/${String(seq + Math.floor(10 + Math.random() * 89)).padStart(4, '0')}`;
+          if (dupCheck) {
+            matricNo = `MIMS/${currentYear}/${String(seq + Math.floor(10 + Math.random() * 89)).padStart(4, '0')}`;
+          }
         }
       }
 

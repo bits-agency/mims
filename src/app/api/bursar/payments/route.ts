@@ -260,126 +260,198 @@ export async function POST(request: Request) {
       }
     }
 
-    const currentPaid = Number(currentClearance?.total_paid || 0);
-    const outstandingBalance = Math.max(0, totalBilled - currentPaid);
-
-    if (currentClearance?.is_cleared && outstandingBalance === 0) {
-      return NextResponse.json(
-        {
-          error: `Account Locked: Student is already fully settled (₦0.00 balance) for ${term} term (${session}).`,
-        },
-        { status: 400 }
-      );
-    }
-
-    if (amountPaid > outstandingBalance) {
-      return NextResponse.json(
-        {
-          error: `Overpayment Error: Payment amount (₦${amountPaid.toLocaleString()}) exceeds the total outstanding balance of ₦${outstandingBalance.toLocaleString()}. Please record the exact balance or less.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // 5. Generate collision-free receipt number
-    const currentYear = new Date().getFullYear();
-    const { count: paymentCount } = await supabase
-      .from('payments')
-      .select('*', { count: 'exact', head: true });
-
-    const receiptSeq = (paymentCount || 0) + 1;
-    const receiptNo = `MIMS/REC/${currentYear}/${String(receiptSeq).padStart(5, '0')}`;
     const effectiveDate = paymentDate || new Date().toISOString().split('T')[0];
 
-    // 6. Insert verified payment record
-    const { data: paymentRecord, error: payErr } = await supabase
-      .from('payments')
-      .insert({
-        student_id: studentId,
-        session,
-        term,
-        amount_paid: amountPaid,
-        payment_date: effectiveDate,
-        receipt_no: receiptNo,
-        method: paymentMethod,
-        channel_reference: cleanRef,
-        bank_name: bankName?.trim() || null,
-        status: 'verified',
-        received_by: auth.session.userId,
-        idempotency_key: idempotencyKey || null,
-        notes: notes?.trim() || null,
-      })
-      .select()
-      .single();
+    let paymentRecord: any = null;
+    let updatedClearance: any = null;
+    let receiptNo: string = '';
+    let newBalance: number = 0;
+    let isCleared: boolean = false;
 
-    if (payErr) {
-      throw new Error(`Failed to record payment in database: ${payErr.message}`);
-    }
+    // Execute atomic PostgreSQL transaction via stored procedure
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('record_payment', {
+      p_student_id: studentId,
+      p_session: session,
+      p_term: term,
+      p_amount: amountPaid,
+      p_method: paymentMethod,
+      p_reference: cleanRef,
+      p_bank_name: bankName?.trim() || null,
+      p_payment_date: effectiveDate,
+      p_total_billed: totalBilled,
+      p_received_by: auth.session.userId,
+      p_actor_role: auth.session.role,
+      p_idempotency_key: idempotencyKey || null,
+      p_notes: notes?.trim() || null,
+    });
 
-    // 7. Update clearance record atomically
-    const newPaid = currentPaid + amountPaid;
-    const newBalance = Math.max(0, totalBilled - newPaid);
-    const isCleared = newBalance === 0;
+    if (!rpcError && rpcResult) {
+      paymentRecord = rpcResult.payment;
+      updatedClearance = rpcResult.clearance;
+      receiptNo = paymentRecord?.receipt_no || '';
+      newBalance = Number(updatedClearance?.balance || 0);
+      isCleared = Boolean(updatedClearance?.is_cleared);
 
-    let updatedClearance: any;
-    if (currentClearance) {
-      const { data: upd, error: updErr } = await supabase
-        .from('student_fee_clearance')
-        .update({
-          total_billed: totalBilled,
-          total_paid: newPaid,
-          balance: newBalance,
-          is_cleared: isCleared,
-          last_payment_date: effectiveDate,
-          verified_by: auth.session.userId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', currentClearance.id)
-        .select()
-        .single();
-
-      if (updErr) throw updErr;
-      updatedClearance = upd;
+      if (rpcResult.replayed) {
+        return NextResponse.json({
+          success: true,
+          replayed: true,
+          payment: paymentRecord,
+          clearance: updatedClearance,
+          message: 'Payment was already processed.',
+        });
+      }
     } else {
-      const { data: ins, error: insErr } = await supabase
-        .from('student_fee_clearance')
+      // Check for known domain exceptions from the stored procedure
+      if (rpcError) {
+        const msg = rpcError.message || '';
+        if (msg.includes('DUPLICATE_REFERENCE')) {
+          return NextResponse.json(
+            { error: `Duplicate Reference: Payment reference "${cleanRef}" has already been recorded on another receipt. Each teller/transfer slip can only be posted once.` },
+            { status: 400 }
+          );
+        }
+        if (msg.includes('ALREADY_CLEARED')) {
+          return NextResponse.json(
+            { error: `Account Locked: Student is already fully settled (₦0.00 balance) for ${term} term (${session}).` },
+            { status: 400 }
+          );
+        }
+        if (msg.includes('OVERPAYMENT')) {
+          return NextResponse.json(
+            { error: `Overpayment Error: Payment amount exceeds the total outstanding balance. Please record the exact balance or less.` },
+            { status: 400 }
+          );
+        }
+        if (msg.includes('REFERENCE_REQUIRED')) {
+          return NextResponse.json(
+            { error: 'A bank teller number, transfer reference or POS slip ID is required for non-cash payments.' },
+            { status: 400 }
+          );
+        }
+        console.warn('RPC record_payment failed, falling back to application-layer transaction:', rpcError);
+      }
+
+      // Fallback path if RPC is not present in target DB
+      const currentPaid = Number(currentClearance?.total_paid || 0);
+      const outstandingBalance = Math.max(0, totalBilled - currentPaid);
+
+      if (currentClearance?.is_cleared && outstandingBalance === 0) {
+        return NextResponse.json(
+          { error: `Account Locked: Student is already fully settled (₦0.00 balance) for ${term} term (${session}).` },
+          { status: 400 }
+        );
+      }
+
+      if (amountPaid > outstandingBalance) {
+        return NextResponse.json(
+          { error: `Overpayment Error: Payment amount (₦${amountPaid.toLocaleString()}) exceeds the total outstanding balance of ₦${outstandingBalance.toLocaleString()}. Please record the exact balance or less.` },
+          { status: 400 }
+        );
+      }
+
+      // Generate receipt number via sequence
+      try {
+        const { data: codeData } = await supabase.rpc('next_code', { p_kind: 'receipt' });
+        receiptNo = codeData || '';
+      } catch {}
+
+      if (!receiptNo) {
+        const currentYear = new Date().getFullYear();
+        const { count: paymentCount } = await supabase
+          .from('payments')
+          .select('*', { count: 'exact', head: true });
+        const receiptSeq = (paymentCount || 0) + 1;
+        receiptNo = `MIMS/REC/${currentYear}/${String(receiptSeq).padStart(5, '0')}`;
+      }
+
+      const { data: insertedPayment, error: payErr } = await supabase
+        .from('payments')
         .insert({
           student_id: studentId,
           session,
           term,
-          total_billed: totalBilled,
-          total_paid: newPaid,
-          balance: newBalance,
-          is_cleared: isCleared,
-          last_payment_date: effectiveDate,
-          verified_by: auth.session.userId,
+          amount_paid: amountPaid,
+          payment_date: effectiveDate,
+          receipt_no: receiptNo,
+          method: paymentMethod,
+          channel_reference: cleanRef,
+          bank_name: bankName?.trim() || null,
+          status: 'verified',
+          received_by: auth.session.userId,
+          idempotency_key: idempotencyKey || null,
+          notes: notes?.trim() || null,
         })
         .select()
         .single();
 
-      if (insErr) throw insErr;
-      updatedClearance = ins;
-    }
+      if (payErr) {
+        throw new Error(`Failed to record payment in database: ${payErr.message}`);
+      }
+      paymentRecord = insertedPayment;
 
-    // 8. Write immutable audit log
-    await logAudit({
-      actorId: auth.session.userId,
-      actorRole: auth.session.role,
-      action: 'payment.recorded',
-      entity: 'payment',
-      entityId: paymentRecord.id,
-      details: {
-        receipt_no: receiptNo,
-        amount: amountPaid,
-        method: paymentMethod,
-        reference: cleanRef,
-        studentId,
-        studentName: `${student.firstname} ${student.lastname}`,
-        session,
-        term,
-        balanceRemaining: newBalance,
-      },
-    });
+      const newPaid = currentPaid + amountPaid;
+      newBalance = Math.max(0, totalBilled - newPaid);
+      isCleared = newBalance === 0;
+
+      if (currentClearance) {
+        const { data: upd, error: updErr } = await supabase
+          .from('student_fee_clearance')
+          .update({
+            total_billed: totalBilled,
+            total_paid: newPaid,
+            balance: newBalance,
+            is_cleared: isCleared,
+            last_payment_date: effectiveDate,
+            verified_by: auth.session.userId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', currentClearance.id)
+          .select()
+          .single();
+
+        if (updErr) throw updErr;
+        updatedClearance = upd;
+      } else {
+        const { data: ins, error: insErr } = await supabase
+          .from('student_fee_clearance')
+          .insert({
+            student_id: studentId,
+            session,
+            term,
+            total_billed: totalBilled,
+            total_paid: newPaid,
+            balance: newBalance,
+            is_cleared: isCleared,
+            last_payment_date: effectiveDate,
+            verified_by: auth.session.userId,
+          })
+          .select()
+          .single();
+
+        if (insErr) throw insErr;
+        updatedClearance = ins;
+      }
+
+      await logAudit({
+        actorId: auth.session.userId,
+        actorRole: auth.session.role,
+        action: 'payment.recorded',
+        entity: 'payment',
+        entityId: paymentRecord.id,
+        details: {
+          receipt_no: receiptNo,
+          amount: amountPaid,
+          method: paymentMethod,
+          reference: cleanRef,
+          studentId,
+          studentName: `${student.firstname} ${student.lastname}`,
+          session,
+          term,
+          balanceRemaining: newBalance,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,

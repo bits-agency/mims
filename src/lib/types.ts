@@ -95,10 +95,12 @@ export interface Result {
   class_id: string;
   session: string;
   term: Term;
-  ca: number;
+  ca1: number;
+  ca2: number;
+  ca?: number;
   exam: number;
   total: number;
-  grade: 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+  grade: string;
   remark: string;
   status: ResultStatus;
   created_at?: string;
