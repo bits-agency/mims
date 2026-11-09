@@ -117,7 +117,7 @@ export async function POST(request: Request) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: parseResult.error.errors[0]?.message || 'Invalid payment details provided.' },
+        { error: parseResult.error.issues?.[0]?.message || 'Invalid payment details provided.' },
         { status: 400 }
       );
     }
@@ -329,7 +329,20 @@ export async function POST(request: Request) {
             { status: 400 }
           );
         }
-        console.warn('RPC record_payment failed, falling back to application-layer transaction:', rpcError);
+
+        // Fail-closed: only allow application-level fallback if the RPC is explicitly absent in PostgreSQL (code 42883)
+        const isRpcMissing = rpcError.code === '42883' || msg.includes('function record_payment') || msg.includes('does not exist');
+        if (!isRpcMissing) {
+          console.error('CRITICAL: record_payment database transaction failed, aborting write to maintain financial integrity:', rpcError);
+          return NextResponse.json(
+            {
+              error: `Transaction Aborted: Failed to record payment securely (${rpcError.message || 'Database error'}). Please retry or contact system administrator.`,
+            },
+            { status: 500 }
+          );
+        }
+
+        console.warn('RPC record_payment function not found in database (42883), falling back to application-layer transaction:', rpcError);
       }
 
       // Fallback path if RPC is not present in target DB

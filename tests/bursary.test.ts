@@ -5,7 +5,7 @@ import {
   allocatePaymentToLevies,
   getBankAccountForWing,
   OFFICIAL_BANK_ACCOUNTS,
-} from '../src/lib/bursary.ts';
+} from '../src/lib/bursary';
 
 describe('Bursary Tariff Resolver', () => {
   it('resolves SSS 3 Candidate Class with WAEC and NECO levies', () => {

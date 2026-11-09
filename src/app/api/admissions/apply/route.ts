@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: parseResult.error.errors[0]?.message || 'Please complete all required fields.' },
+        { error: parseResult.error.issues?.[0]?.message || 'Please complete all required fields.' },
         { status: 400 }
       );
     }
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     const dossierDetails = {
       target_class: target_class || 'Junior Secondary (JSS 1)',
       campus: campus_preference || 'Madinah Quarters',
-      report_card_url: body.report_file_url || null,
+      report_card_url: report_file_url || null,
       prev_school: prev_school_name || null,
       prev_grade: prev_grade_completed || null,
       medical: medical_history || null,
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
         lastname: lastname.trim(),
         gender: gender ? (gender.toLowerCase() === 'female' ? 'female' : 'male') : 'male',
         dob: dob || null,
-        category: body.boarding_type === 'Boarding' ? 'Boarding' : 'Day',
+        category: boarding_type === 'Boarding' ? 'Boarding' : 'Day',
         guardian_name: guardian_name?.trim() || null,
         guardian_phone: guardian_phone?.trim() || null,
         guardian_email: cleanEmail,

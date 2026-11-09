@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: parseResult.error.errors[0]?.message || 'Invalid media gallery parameters.' },
+        { error: parseResult.error.issues?.[0]?.message || 'Invalid media gallery parameters.' },
         { status: 400 }
       );
     }

@@ -11,7 +11,7 @@ import {
   achievementSchema,
   admissionsApplicationSchema,
   contactMessageSchema,
-} from '../src/lib/validation.ts';
+} from '../src/lib/validation';
 
 describe('Zod Input Validation Layer', () => {
   describe('Authentication Schemas', () => {

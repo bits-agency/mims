@@ -1,7 +1,19 @@
 import { NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAuth, logAudit } from '@/lib/guard';
+import { hashPassword } from '@/lib/auth';
 import { studentRegistrationSchema } from '@/lib/validation';
+
+function generateTemporaryPassword(length = 8): string {
+  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.randomBytes(length);
+  let pass = '';
+  for (let i = 0; i < length; i++) {
+    pass += chars[bytes[i] % chars.length];
+  }
+  return pass;
+}
 
 export async function GET(request: Request) {
   try {
@@ -67,7 +79,7 @@ export async function POST(request: Request) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: parseResult.error.errors[0]?.message || 'Invalid student profile registration data.' },
+        { error: parseResult.error.issues?.[0]?.message || 'Invalid student profile registration data.' },
         { status: 400 }
       );
     }
@@ -105,10 +117,9 @@ export async function POST(request: Request) {
       admissionNo = `MIMS/${currentYear}/${String(seq).padStart(4, '0')}`;
     }
 
-    // Create user login account for the student
-    const defaultPassword = 'Student@12345';
-    const bcrypt = await import('bcryptjs');
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    // Create user login account for the student with a unique temporary password
+    const tempPassword = generateTemporaryPassword(8);
+    const hashedPassword = await hashPassword(tempPassword);
     const cleanUsername = admissionNo.toLowerCase().replace(/[^a-z0-9]/g, '');
     const studentEmail = guardian_email || `${cleanUsername}@mims.sch.ng`;
 
@@ -167,7 +178,7 @@ export async function POST(request: Request) {
       details: { admission_no: data.admission_no, name: `${data.firstname} ${data.lastname}` },
     });
 
-    return NextResponse.json({ success: true, student: data, tempPassword: defaultPassword });
+    return NextResponse.json({ success: true, student: data, tempPassword });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });

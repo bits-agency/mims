@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateGrade, formatDate, generateApplicationRef } from '../src/lib/utils.ts';
+import { calculateGrade, formatDate, generateApplicationRef } from '../src/lib/utils';
 
 describe('Academic Grading Utility', () => {
   it('correctly assigns A1 for scores >= 75', () => {

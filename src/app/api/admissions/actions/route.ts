@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: parseResult.error.errors[0]?.message || 'Invalid parameters provided.' },
+        { error: parseResult.error.issues?.[0]?.message || 'Invalid parameters provided.' },
         { status: 400 }
       );
     }

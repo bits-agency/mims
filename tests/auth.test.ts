@@ -4,7 +4,7 @@ import {
   createSessionToken,
   verifySessionToken,
   type SessionPayload,
-} from '../src/lib/token.ts';
+} from '../src/lib/token';
 
 describe('HMAC-SHA256 Session Token Protocol', () => {
   const sampleUser: Omit<SessionPayload, 'exp'> = {

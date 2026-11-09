@@ -14,7 +14,7 @@ export const paymentRecordSchema = z.object({
   studentId: z.string().uuid('Valid student ID is required'),
   amountPaid: z.coerce.number().positive('Payment amount must be greater than zero'),
   paymentMethod: z.enum(['cash', 'bank_transfer', 'pos', 'direct_deposit'], {
-    errorMap: () => ({ message: 'Method must be one of: cash, bank_transfer, pos, direct_deposit' }),
+    message: 'Method must be one of: cash, bank_transfer, pos, direct_deposit',
   }),
   channelRef: z.string().max(100).optional().nullable(),
   bankName: z.string().max(100).optional().nullable(),
