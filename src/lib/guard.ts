@@ -69,12 +69,12 @@ export async function requireSuperAdmin(): Promise<GuardResult> {
   const result = await requireAuth(['super_admin']);
   if (!result.authorized) return result;
 
-  // Double-check with live DB to verify this account is genuinely super_admin
+  // Double-check with live DB to verify this account is genuinely super_admin and session is fresh
   try {
     const supabase = getAdminClient();
     const { data: dbUser } = await supabase
       .from('users')
-      .select('role, status')
+      .select('role, status, session_version')
       .eq('id', result.session.userId)
       .single();
 
@@ -84,6 +84,18 @@ export async function requireSuperAdmin(): Promise<GuardResult> {
         response: NextResponse.json(
           { error: 'Forbidden. Super Administrator privileges required.' },
           { status: 403 }
+        ),
+      };
+    }
+
+    const currentVersion = dbUser.session_version ?? 0;
+    const tokenVersion = result.session.sessionVersion ?? 0;
+    if (currentVersion !== tokenVersion) {
+      return {
+        authorized: false,
+        response: NextResponse.json(
+          { error: 'Session invalidated due to password or credential update.' },
+          { status: 401 }
         ),
       };
     }
@@ -101,6 +113,36 @@ export async function requireSuperAdmin(): Promise<GuardResult> {
   }
 
   return result;
+}
+
+/**
+ * Validate that a mutation request originates from the application's domain (CSRF prevention)
+ */
+export function validateOrigin(request: Request): boolean {
+  if (process.env.NODE_ENV !== 'production') {
+    return true; // Allow dev/localhost requests
+  }
+
+  const origin = request.headers.get('origin');
+  const host = request.headers.get('host');
+  if (!origin) {
+    // If no Origin header (e.g., direct GET, or standard server-to-server), check Referer
+    const referer = request.headers.get('referer');
+    if (!referer) return true;
+    try {
+      const refererHost = new URL(referer).host;
+      return refererHost === host;
+    } catch {
+      return false;
+    }
+  }
+
+  try {
+    const originHost = new URL(origin).host;
+    return originHost === host;
+  } catch {
+    return false;
+  }
 }
 
 /**

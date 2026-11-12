@@ -1,6 +1,19 @@
 import { NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAuth, logAudit } from '@/lib/guard';
+import { hashPassword } from '@/lib/auth';
+import { studentRegistrationSchema } from '@/lib/validation';
+
+function generateTemporaryPassword(length = 8): string {
+  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.randomBytes(length);
+  let pass = '';
+  for (let i = 0; i < length; i++) {
+    pass += chars[bytes[i] % chars.length];
+  }
+  return pass;
+}
 
 export async function GET(request: Request) {
   try {
@@ -61,11 +74,100 @@ export async function POST(request: Request) {
     const auth = await requireAuth(['admin', 'super_admin']);
     if (!auth.authorized) return auth.response;
 
-    const body = await request.json();
+    const rawBody = await request.json().catch(() => ({}));
+    const parseResult = studentRegistrationSchema.safeParse(rawBody);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues?.[0]?.message || 'Invalid student profile registration data.' },
+        { status: 400 }
+      );
+    }
+
+    const {
+      firstname,
+      lastname,
+      gender,
+      dob,
+      category,
+      class_id,
+      guardian_name,
+      guardian_phone,
+      guardian_email,
+      address,
+      photo,
+    } = parseResult.data;
+
     const supabase = getAdminClient();
 
-    const { data, error } = await supabase.from('students').insert(body).select().single();
-    if (error) throw error;
+    // Generate collision-free admission number
+    let admissionNo = '';
+    try {
+      const { data: codeData } = await supabase.rpc('next_code', { p_kind: 'admission' });
+      admissionNo = codeData || '';
+    } catch {}
+
+    if (!admissionNo) {
+      const currentYear = new Date().getFullYear();
+      const { count } = await supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true })
+        .not('class_id', 'is', null);
+      const seq = (count || 0) + 1;
+      admissionNo = `MIMS/${currentYear}/${String(seq).padStart(4, '0')}`;
+    }
+
+    // Create user login account for the student with a unique temporary password
+    const tempPassword = generateTemporaryPassword(8);
+    const hashedPassword = await hashPassword(tempPassword);
+    const cleanUsername = admissionNo.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const studentEmail = guardian_email || `${cleanUsername}@mims.sch.ng`;
+
+    const { data: studentUser, error: userErr } = await supabase
+      .from('users')
+      .insert({
+        full_name: `${firstname} ${lastname}`.trim(),
+        username: cleanUsername,
+        email: studentEmail,
+        password: hashedPassword,
+        role: 'student',
+        status: 'active',
+      })
+      .select('id')
+      .single();
+
+    if (userErr || !studentUser) {
+      return NextResponse.json(
+        { error: `Failed to create user login profile: ${userErr?.message || 'Database error'}` },
+        { status: 500 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from('students')
+      .insert({
+        user_id: studentUser.id,
+        admission_no: admissionNo,
+        firstname: firstname.trim(),
+        lastname: lastname.trim(),
+        gender: gender.toLowerCase() === 'female' ? 'female' : 'male',
+        dob: dob || null,
+        category,
+        class_id: class_id || null,
+        guardian_name: guardian_name?.trim() || null,
+        guardian_phone: guardian_phone?.trim() || null,
+        guardian_email: guardian_email?.trim() || null,
+        address: address?.trim() || null,
+        photo: photo || null,
+        exam_status: 'passed',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      await supabase.from('users').delete().eq('id', studentUser.id);
+      throw error;
+    }
 
     await logAudit({
       actorId: auth.session.userId,
@@ -76,7 +178,7 @@ export async function POST(request: Request) {
       details: { admission_no: data.admission_no, name: `${data.firstname} ${data.lastname}` },
     });
 
-    return NextResponse.json({ success: true, student: data });
+    return NextResponse.json({ success: true, student: data, tempPassword });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
     return NextResponse.json({ error: message }, { status: 500 });
